@@ -90,11 +90,16 @@ class GapDetector:
 
     @staticmethod
     def _are_contradictory(text_a: str, text_b: str) -> bool:
-        negation_words = ["not", "no", "never", "without", "lack", "absence", "decrease", "increase"]
-        a_neg = any(w in text_a.lower() for w in negation_words)
-        b_neg = any(w in text_b.lower() for w in negation_words)
+        import re
 
-        common_terms = set(text_a.lower().split()) & set(text_b.lower().split())
+        negation_words = ["not", "no", "never", "without", "lack", "absence", "decrease", "increase"]
+        a_words = text_a.lower().split()
+        b_words = text_b.lower().split()
+
+        a_neg = any(bool(re.search(rf"\b{re.escape(w)}\b", text_a.lower())) for w in negation_words)
+        b_neg = any(bool(re.search(rf"\b{re.escape(w)}\b", text_b.lower())) for w in negation_words)
+
+        common_terms = set(a_words) & set(b_words)
         if len(common_terms) < 5:
             return False
 

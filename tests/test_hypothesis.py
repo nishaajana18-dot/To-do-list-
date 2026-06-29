@@ -5,8 +5,8 @@ from packages.hypothesis.src.hypothesis_generator import HypothesisGenerator
 class TestGapDetection:
     def test_are_contradictory_with_negation(self):
         assert GapDetector._are_contradictory(
-            "Temperature increases reaction rate",
-            "Temperature does not increase reaction rate",
+            "The reaction rate increases with temperature under acidic conditions",
+            "The reaction rate does not increase with temperature under acidic conditions",
         )
 
     def test_are_not_contradictory(self):

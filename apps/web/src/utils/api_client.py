@@ -71,10 +71,10 @@ def get_claims(source_id: str) -> list[dict[str, Any]]:
 
 
 def list_evidence(project_id: str, claim_type: str | None = None, min_confidence: float = 0.0) -> list[dict[str, Any]]:
-    params = {"project_id": project_id, "min_confidence": min_confidence}
+    params = {"min_confidence": min_confidence}
     if claim_type:
         params["claim_type"] = claim_type
-    r = httpx.get(_url("/retrieval/evidence/{project_id}"), params=params, timeout=30)
+    r = httpx.get(_url(f"/retrieval/evidence/{project_id}"), params=params, timeout=30)
     r.raise_for_status()
     return r.json()
 
