@@ -1,192 +1,221 @@
 const todoForm = document.getElementById('todo-form');
 const todoInput = document.getElementById('todo-input');
+const todoDueDate = document.getElementById('todo-due-date');
 const todoList = document.getElementById('todo-list');
 
-// Read saved tasks from localStorage.
-function getTasksFromStorage() {
-  return JSON.parse(localStorage.getItem('tasks')) || [];
+let tasks = loadTasks();
+
+function loadTasks() {
+  const raw = JSON.parse(localStorage.getItem('tasks')) || [];
+  return raw.map((task, index) => ({
+    id: task.id || `${Date.now()}-${index}`,
+    text: task.text || '',
+    completed: Boolean(task.completed),
+    dueDate: task.dueDate || '',
+    subtasks: Array.isArray(task.subtasks) ? task.subtasks : []
+  }));
 }
 
-// Save current list items back to localStorage.
 function saveTasksToStorage() {
-  const tasks = [];
-  const items = todoList.querySelectorAll('li');
-
-  items.forEach((item) => {
-    const taskText = item.querySelector('span').textContent;
-    const completed = item.querySelector('input[type="checkbox"]').checked;
-    tasks.push({ text: taskText, completed: completed });
-  });
-   function renderTasks() {
-      const list = document.getElementById('taskList');
-      list.innerHTML = '';
-      tasks.forEach((task, index) => {
-        const li = document.createElement('li');
-        li.innerHTML = `<strong>${task.name}</strong> <button onclick="addSubtask(${index})">Add Subtask</button>`;
-        list.appendChild(li);
-        task.subtasks.forEach(subtask => {
-          const subli = document.createElement('li');
-          subli.textContent = subtask;
-          li.appendChild(subli);
-        });
-      });
-    }
-
-function renderTasks() {
-  taskList.innerHTML = "";
-
-  tasks.forEach((task) => {
-    const li = document.createElement("li");
-    li.className = "task-item";
-    li.dataset.taskId = task.id;
-    li.dataset.category = task.category;
-
-    if (task.completed) li.classList.add("completed");
-
-    let dueDateHTML = "";
-    if (task.dueDate) {
-      const dueDate = new Date(task.dueDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const isOverdue = dueDate < today && !task.completed;
-      const dateClass = isOverdue ? "overdue" : "";
-
-      const options = { month: "short", day: "numeric", year: "numeric" };
-      const formattedDate = dueDate.toLocaleDateString("en-US", options);
-
-      dueDateHTML = `<span class="task-due-date ${dateClass}">📅 ${formattedDate}</span>`;
-    }
-  li.innerHTML = `
-      <div class="task-header">
-          <span class="task-text">${escapeHtml(task.text)}</span>
-          <div class="task-meta">
-              <span class="task-category">${task.category}</span>
-              ${dueDateHTML}
-          </div>
-      </div>
-      <div class="task-actions">
-          <button class="complete-btn" onclick="toggleComplete(${task.id})">
-              ${task.completed ? "↶ Undo" : "✓ Complete"}
-          </button>
-          <button class="edit-btn" onclick="openEditModal(${
-            task.id
-          })">✎ Edit</button>
-          <button class="delete-btn" onclick="deleteTask(${
-            task.id
-          })">✕ Delete</button>
-      </div>
-    `;
-
-    taskList.appendChild(li);
-  });
-
-  filterTasks(currentFilter);
-}
-
-
   localStorage.setItem('tasks', JSON.stringify(tasks));
 }
 
-// Create one task row and wire up its controls.
-function addTask(taskData) {
-  const task = typeof taskData === 'string' ? { text: taskData, completed: false } : taskData;
+function moveTask(taskId, direction) {
+  const currentIndex = tasks.findIndex((task) => task.id === taskId);
+  if (currentIndex === -1) {
+    return;
+  }
 
-  const listItem = document.createElement('li');
-  listItem.classList.add('todo-item');
+  const targetIndex = currentIndex + direction;
+  if (targetIndex < 0 || targetIndex >= tasks.length) {
+    return;
+  }
 
-  const checkBox = document.createElement('input');
-  checkBox.type = 'checkbox';
-  checkBox.checked = task.completed;
-  listItem.appendChild(checkBox);
+  const [taskToMove] = tasks.splice(currentIndex, 1);
+  tasks.splice(targetIndex, 0, taskToMove);
+  saveTasksToStorage();
+  renderTasks();
+}
 
-  const taskText = document.createElement('span');
-  taskText.textContent = task.text;
-  taskText.style.textDecoration = task.completed ? 'line-through' : 'none';
-  listItem.appendChild(taskText);
+function formatDueDate(dueDateValue) {
+  if (!dueDateValue) {
+    return '';
+  }
 
-  const editButton = document.createElement('button');
-  editButton.type = 'button';
-  editButton.textContent = '\u{1F58A}\u{FE0F}';
-  editButton.classList.add('task-action-btn');
-  editButton.title = 'Edit task';
-  editButton.setAttribute('aria-label', 'Edit task');
-
-  const deleteButton = document.createElement('button');
-  deleteButton.type = 'button';
-  deleteButton.textContent = '\u{1F5D1}\u{FE0F}';
-  deleteButton.classList.add('task-action-btn');
-  deleteButton.title = 'Delete task';
-  deleteButton.setAttribute('aria-label', 'Delete task');
-
-  const actionGroup = document.createElement('div');
-  actionGroup.classList.add('task-actions');
-  actionGroup.appendChild(editButton);
-  actionGroup.appendChild(deleteButton);
-  listItem.appendChild(actionGroup);
-
-  // Toggle completed state.
-  checkBox.addEventListener('change', function () {
-    taskText.style.textDecoration = this.checked ? 'line-through' : 'none';
-    saveTasksToStorage();
+  const date = new Date(`${dueDateValue}T00:00:00`);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
   });
+}
 
-  // Switch between Edit and Save mode for this task.
-  editButton.addEventListener('click', function () {
-    const existingInput = listItem.querySelector('input[type="text"]');
+function isOverdue(task) {
+  if (!task.dueDate || task.completed) {
+    return false;
+  }
 
-    if (existingInput) {
-      const updatedText = existingInput.value.trim();
-      if (updatedText === '') {
-        alert('Task cannot be empty.');
+  const due = new Date(`${task.dueDate}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return due < today;
+}
+
+function renderTasks() {
+  todoList.innerHTML = '';
+
+  tasks.forEach((task, index) => {
+    const listItem = document.createElement('li');
+    listItem.classList.add('todo-item');
+    listItem.dataset.taskId = task.id;
+
+    const checkBox = document.createElement('input');
+    checkBox.type = 'checkbox';
+    checkBox.checked = task.completed;
+    checkBox.addEventListener('change', () => {
+      task.completed = checkBox.checked;
+      saveTasksToStorage();
+      renderTasks();
+    });
+
+    const main = document.createElement('div');
+    main.classList.add('task-main');
+
+    const taskTitle = document.createElement('span');
+    taskTitle.classList.add('task-title');
+    taskTitle.textContent = task.text;
+    taskTitle.style.textDecoration = task.completed ? 'line-through' : 'none';
+    main.appendChild(taskTitle);
+
+    if (task.dueDate) {
+      const dueDate = document.createElement('span');
+      dueDate.classList.add('task-due-date');
+      if (isOverdue(task)) {
+        dueDate.classList.add('overdue');
+      }
+      dueDate.textContent = `Due: ${formatDueDate(task.dueDate)}`;
+      main.appendChild(dueDate);
+    }
+
+    const subtaskList = document.createElement('ul');
+    subtaskList.classList.add('task-subtasks');
+    task.subtasks.forEach((subtask) => {
+      const subtaskItem = document.createElement('li');
+      subtaskItem.classList.add('task-subtask');
+      subtaskItem.textContent = subtask;
+      subtaskList.appendChild(subtaskItem);
+    });
+
+    if (task.subtasks.length > 0) {
+      main.appendChild(subtaskList);
+    }
+
+    const addSubtaskButton = document.createElement('button');
+    addSubtaskButton.type = 'button';
+    addSubtaskButton.classList.add('add-subtask-btn');
+    addSubtaskButton.textContent = '+ Subtask';
+    addSubtaskButton.addEventListener('click', () => {
+      const value = prompt('Enter a subtask:');
+      const subtaskText = value ? value.trim() : '';
+      if (!subtaskText) {
         return;
       }
 
-      taskText.textContent = updatedText;
-      listItem.replaceChild(taskText, existingInput);
-      editButton.textContent = '\u{1F58A}\u{FE0F}';
-      editButton.title = 'Edit task';
-      editButton.setAttribute('aria-label', 'Edit task');
+      task.subtasks.push(subtaskText);
       saveTasksToStorage();
-      return;
-    }
+      renderTasks();
+    });
+    main.appendChild(addSubtaskButton);
 
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.value = taskText.textContent;
-    listItem.replaceChild(input, taskText);
-    editButton.textContent = 'Save';
-    editButton.title = 'Save task';
-    editButton.setAttribute('aria-label', 'Save task');
-    input.focus();
+    const editButton = document.createElement('button');
+    editButton.type = 'button';
+    editButton.textContent = '\u{1F58A}\u{FE0F}';
+    editButton.classList.add('task-action-btn');
+    editButton.title = 'Edit task';
+    editButton.setAttribute('aria-label', 'Edit task');
+    editButton.addEventListener('click', () => {
+      const updated = prompt('Edit task:', task.text);
+      const updatedText = updated ? updated.trim() : '';
+      if (!updatedText) {
+        return;
+      }
+
+      task.text = updatedText;
+      saveTasksToStorage();
+      renderTasks();
+    });
+
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.textContent = '\u{1F5D1}\u{FE0F}';
+    deleteButton.classList.add('task-action-btn');
+    deleteButton.title = 'Delete task';
+    deleteButton.setAttribute('aria-label', 'Delete task');
+    deleteButton.addEventListener('click', () => {
+      tasks = tasks.filter((item) => item.id !== task.id);
+      saveTasksToStorage();
+      renderTasks();
+    });
+
+    const moveUpButton = document.createElement('button');
+    moveUpButton.type = 'button';
+    moveUpButton.textContent = '\u{2B06}\u{FE0F}';
+    moveUpButton.classList.add('task-action-btn', 'reorder-btn');
+    moveUpButton.title = 'Move task up';
+    moveUpButton.setAttribute('aria-label', 'Move task up');
+    moveUpButton.disabled = index === 0;
+    moveUpButton.addEventListener('click', () => {
+      moveTask(task.id, -1);
+    });
+
+    const moveDownButton = document.createElement('button');
+    moveDownButton.type = 'button';
+    moveDownButton.textContent = '\u{2B07}\u{FE0F}';
+    moveDownButton.classList.add('task-action-btn', 'reorder-btn');
+    moveDownButton.title = 'Move task down';
+    moveDownButton.setAttribute('aria-label', 'Move task down');
+    moveDownButton.disabled = index === tasks.length - 1;
+    moveDownButton.addEventListener('click', () => {
+      moveTask(task.id, 1);
+    });
+
+    const actionGroup = document.createElement('div');
+    actionGroup.classList.add('task-actions');
+    actionGroup.appendChild(moveUpButton);
+    actionGroup.appendChild(moveDownButton);
+    actionGroup.appendChild(editButton);
+    actionGroup.appendChild(deleteButton);
+
+    listItem.appendChild(checkBox);
+    listItem.appendChild(main);
+    listItem.appendChild(actionGroup);
+    todoList.appendChild(listItem);
   });
-
-  // Remove task from the list.
-  deleteButton.addEventListener('click', function () {
-    todoList.removeChild(listItem);
-    saveTasksToStorage();
-  });
-
-  todoList.appendChild(listItem);
 }
 
-// Add a new task from the form input.
-todoForm.addEventListener('submit', function (event) {
+todoForm.addEventListener('submit', (event) => {
   event.preventDefault();
-  const newTask = todoInput.value.trim();
+  const text = todoInput.value.trim();
 
-  if (newTask === '') {
+  if (!text) {
     alert('Please enter a task!');
     return;
   }
 
-  addTask({ text: newTask, completed: false });
+  const newTask = {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    text,
+    completed: false,
+    dueDate: todoDueDate.value || '',
+    subtasks: []
+  };
+
+  tasks.push(newTask);
   saveTasksToStorage();
+  renderTasks();
+
   todoInput.value = '';
+  todoDueDate.value = '';
 });
 
-// Restore saved tasks when the page first loads.
-document.addEventListener('DOMContentLoaded', function () {
-  const savedTasks = getTasksFromStorage();
-  savedTasks.forEach((task) => addTask(task));
-});
+renderTasks();
