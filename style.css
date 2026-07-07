@@ -1,0 +1,91 @@
+/* Page-level layout and color theme */
+body {
+  font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  background: linear-gradient(135deg, #04070d, #0a1428);
+  color: #ffffff;
+}
+
+/* Main to-do app card */
+#todo-app {
+  width: 80%;
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #11151d;
+  border-radius: 10px;
+  border: 1px solid #1a2435;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* Add-task text input */
+#todo-form input[type="text"] {
+  width: 70%;
+  padding: 10px;
+  border: 2px solid #1f2a3c;
+  background-color: #0c1119;
+  color: #ffffff;
+  border-radius: 4px;
+  margin-right: 10px;
+}
+
+/* Add-task button */
+#todo-form button {
+  padding: 10px 20px;
+  background-color: #0a1f45;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+#todo-form button:hover {
+  background-color: #102d63;
+}
+
+/* Task list container */
+#todo-list {
+  list-style: none;
+  padding: 0;
+}
+
+/* Individual task row */
+#todo-list li {
+  background-color: #171d27;
+  color: #ffffff;
+  margin-top: 10px;
+  padding: 12px 80px 12px 12px;
+  border-radius: 4px;
+  border: 1px solid #263244;
+  position: relative;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+/* Keeps pen and trash icons together in the top-right corner */
+.task-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+/* Icon-only action buttons with matching background */
+.task-action-btn {
+  background: transparent;
+  color: #ffffff;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  line-height: 1;
+  font-size: 18px;
+}
