@@ -1,0 +1,9 @@
+# Local environment requirements 
+
+Node.js>=18.0.0
+npm>=9.0.0
+Python>=3.8.0 
+
+# Test tooling versions from package.json
+jest=^30.4.2
+jest-environment-jsdom=^30.4.1
