@@ -73,9 +73,35 @@ app.post("/infer", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+const DEFAULT_PORT = 3000;
+const MAX_PORT_ATTEMPTS = 10;
 
-app.listen(PORT, () => {
-  console.log(`Express server running at http://localhost:${PORT}`);
-  console.log(`Using Ollama model: ${OLLAMA_MODEL}`);
-});
+function parsePreferredPort(rawPort) {
+  const parsed = Number(rawPort);
+  if (Number.isInteger(parsed) && parsed > 0 && parsed <= 65535) {
+    return parsed;
+  }
+  return DEFAULT_PORT;
+}
+
+function startServer(port, attemptsRemaining) {
+  const server = app.listen(port, () => {
+    console.log(`Express server running at http://localhost:${port}`);
+    console.log(`Using Ollama model: ${OLLAMA_MODEL}`);
+  });
+
+  server.on("error", (error) => {
+    if (error.code === "EADDRINUSE" && attemptsRemaining > 0) {
+      const nextPort = port + 1;
+      console.warn(`Port ${port} is already in use. Retrying on port ${nextPort}...`);
+      startServer(nextPort, attemptsRemaining - 1);
+      return;
+    }
+
+    console.error("Failed to start server:", error.message);
+    process.exit(1);
+  });
+}
+
+const preferredPort = parsePreferredPort(process.env.PORT);
+startServer(preferredPort, MAX_PORT_ATTEMPTS);
