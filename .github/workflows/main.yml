@@ -1,0 +1,22 @@
+name: To do list Tests
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 24
+        package-manager-cache: false # Disable automatic npm caching if not required
+    - run: npm ci
+    - run: npm test
