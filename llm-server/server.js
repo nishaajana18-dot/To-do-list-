@@ -10,19 +10,36 @@ app.use(express.json());
 // Run `ollama list` in PowerShell to see your exact model name.
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen3:8b";
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434/api/generate";
+const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS) || 60000;
+const OLLAMA_THINK = (process.env.OLLAMA_THINK || "false").toLowerCase() === "true";
 
 async function queryOllama(prompt) {
-  const response = await fetch(OLLAMA_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: OLLAMA_MODEL,
-      prompt: prompt,
-      stream: false
-    })
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+
+  let response;
+  try {
+    response = await fetch(OLLAMA_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        prompt: prompt,
+        stream: false,
+        think: OLLAMA_THINK
+      }),
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error(`Ollama request timed out after ${OLLAMA_TIMEOUT_MS}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -88,6 +105,7 @@ function startServer(port, attemptsRemaining) {
   const server = app.listen(port, () => {
     console.log(`Express server running at http://localhost:${port}`);
     console.log(`Using Ollama model: ${OLLAMA_MODEL}`);
+    console.log(`Ollama think mode: ${OLLAMA_THINK}`);
   });
 
   server.on("error", (error) => {
