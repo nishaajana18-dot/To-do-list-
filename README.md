@@ -104,12 +104,20 @@ $prompts = @(
 	"Give 3 tips for staying organized.",
 	"Rewrite this politely: Send the file now.",
 	"What is JavaScript in one sentence?",
-	"List 3 quick dinner ideas."
+	"List 3 quick dinner ideas.",
+	"Give a one-line motivational quote."
 )
 
 foreach ($p in $prompts) {
-	$body = @{ prompt = $p } | ConvertTo-Json
-	Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/infer -ContentType "application/json" -Body $body
+	try {
+		$body = @{ prompt = $p } | ConvertTo-Json -Compress
+		$result = Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/infer -ContentType "application/json" -Body $body -TimeoutSec 90 -ErrorAction Stop
+		Write-Host "OK: $p"
+		Write-Host "-> $($result.response)"
+	} catch {
+		Write-Warning "FAILED: $p"
+		Write-Warning $_.Exception.Message
+	}
 }
 ```
 
