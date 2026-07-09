@@ -105,6 +105,22 @@ app.post("/api/infer", handleInfer);
 // Backward-compatible endpoint to avoid breaking older clients.
 app.post("/infer", handleInfer);
 
+// Return a clear JSON error when request bodies contain invalid JSON.
+app.use((error, req, res, next) => {
+  if (error && error.type === "entity.parse.failed") {
+    return res.status(400).json({
+      error: "Invalid JSON in request body",
+      example: {
+        prompt: "Say hello in one short sentence."
+      },
+      powerShellTip:
+        "Use Invoke-RestMethod with ConvertTo-Json, or curl.exe with --% to avoid quote-escaping issues in PowerShell."
+    });
+  }
+
+  return next(error);
+});
+
 const DEFAULT_PORT = 3000;
 const MAX_PORT_ATTEMPTS = 10;
 
