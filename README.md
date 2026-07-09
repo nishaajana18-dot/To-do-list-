@@ -68,7 +68,8 @@ Legacy alias still available:
 ### Quick test (PowerShell)
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/infer -ContentType application/json -Body '{"prompt":"Say hello in one short sentence."}'
+$body = @{ prompt = "Say hello in one short sentence." } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/infer -ContentType "application/json" -Body $body
 ```
 
 ### Environment variables (LLM server)
@@ -80,6 +81,37 @@ Set these in `llm-server/.env` if needed:
 - `OLLAMA_URL` (default: `http://localhost:11434/api/generate`)
 - `OLLAMA_TIMEOUT_MS` (default: `60000`)
 - `OLLAMA_THINK` (`true` or `false`, default: `false`)
+
+## Example prompts
+
+Use any of these with `POST /api/infer`.
+
+Tip: If responses time out, keep prompts short and request very small outputs (for example, "in one sentence" or "in 3 bullets").
+
+1. `Say hello in one short sentence.`
+2. `Give 3 tips for staying organized.`
+3. `Rewrite this politely: "Send the file now".`
+4. `Summarize this in one line: I need to buy milk, eggs, and bread.`
+5. `List 3 quick dinner ideas.`
+6. `What is JavaScript in one sentence?`
+7. `Give a one-line motivational quote.`
+
+### PowerShell examples with prompts
+
+```powershell
+$prompts = @(
+	"Say hello in one short sentence.",
+	"Give 3 tips for staying organized.",
+	"Rewrite this politely: Send the file now.",
+	"What is JavaScript in one sentence?",
+	"List 3 quick dinner ideas."
+)
+
+foreach ($p in $prompts) {
+	$body = @{ prompt = $p } | ConvertTo-Json
+	Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/infer -ContentType "application/json" -Body $body
+}
+```
 
 ## Run tests
 
