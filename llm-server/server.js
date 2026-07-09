@@ -7,6 +7,10 @@ const app = express();
 
 app.use(express.json());
 
+// This Express app has two jobs:
+// 1) Serve the front-end to-do list files (index.html, script.js, style.css).
+// 2) Provide LLM API endpoints that proxy prompts to Ollama.
+
 // Serve the root to-do app files from this same server process.
 // This lets http://localhost:<port>/ load index.html, script.js, and style.css.
 const WEB_ROOT = path.resolve(__dirname, "..");
@@ -75,6 +79,7 @@ app.get("/api", (req, res) => {
 });
 
 // Shared request handler used by both /api/infer and the legacy /infer route.
+// This is the LLM side: it validates the prompt and forwards it to Ollama.
 async function handleInfer(req, res) {
   const prompt = req.body.prompt;
 
@@ -101,8 +106,26 @@ async function handleInfer(req, res) {
 }
 
 // Preferred endpoint for inference requests.
+app.get("/api/infer", (req, res) => {
+  res.status(405).json({
+    error: "Method not allowed",
+    message: "Use POST /api/infer with a JSON body.",
+    exampleBody: {
+      prompt: "Say hello in one short sentence."
+    }
+  });
+});
 app.post("/api/infer", handleInfer);
 // Backward-compatible endpoint to avoid breaking older clients.
+app.get("/infer", (req, res) => {
+  res.status(405).json({
+    error: "Method not allowed",
+    message: "Use POST /infer with a JSON body (or POST /api/infer).",
+    exampleBody: {
+      prompt: "Say hello in one short sentence."
+    }
+  });
+});
 app.post("/infer", handleInfer);
 
 // Return a clear JSON error when request bodies contain invalid JSON.
