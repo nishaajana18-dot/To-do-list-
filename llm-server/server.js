@@ -1,19 +1,27 @@
 require("dotenv").config();
 
 const express = require("express");
+const path = require("path");
 
 const app = express();
 
 app.use(express.json());
+
+// Serve the root to-do app files from this same server process.
+// This lets http://localhost:<port>/ load index.html, script.js, and style.css.
+const WEB_ROOT = path.resolve(__dirname, "..");
+app.use(express.static(WEB_ROOT));
 
 // Change this if your model has a different name.
 // Run `ollama list` in PowerShell to see your exact model name.
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen3:8b";
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434/api/generate";
 const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS) || 60000;
+// If true, Ollama may include model "thinking" traces depending on model support.
 const OLLAMA_THINK = (process.env.OLLAMA_THINK || "false").toLowerCase() === "true";
 
 async function queryOllama(prompt) {
+  // Abort slow upstream calls so this API does not hang forever.
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
 
@@ -51,13 +59,14 @@ async function queryOllama(prompt) {
   return data.response;
 }
 
-app.get("/", (req, res) => {
+app.get("/api", (req, res) => {
   res.json({
     name: "Local LLM Inference Server",
     status: "ok",
     model: OLLAMA_MODEL,
     endpoints: {
-      "POST /infer": "Send a prompt to the local Ollama model"
+      "POST /api/infer": "Send a prompt to the local Ollama model",
+      "POST /infer": "Legacy alias for /api/infer"
     },
     exampleBody: {
       prompt: "Explain quantum computing in one sentence."
@@ -65,7 +74,8 @@ app.get("/", (req, res) => {
   });
 });
 
-app.post("/infer", async (req, res) => {
+// Shared request handler used by both /api/infer and the legacy /infer route.
+async function handleInfer(req, res) {
   const prompt = req.body.prompt;
 
   if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
@@ -88,7 +98,12 @@ app.post("/infer", async (req, res) => {
       details: error.message
     });
   }
-});
+}
+
+// Preferred endpoint for inference requests.
+app.post("/api/infer", handleInfer);
+// Backward-compatible endpoint to avoid breaking older clients.
+app.post("/infer", handleInfer);
 
 const DEFAULT_PORT = 3000;
 const MAX_PORT_ATTEMPTS = 10;
@@ -109,6 +124,7 @@ function startServer(port, attemptsRemaining) {
   });
 
   server.on("error", (error) => {
+    // If the port is taken, automatically try the next one a few times.
     if (error.code === "EADDRINUSE" && attemptsRemaining > 0) {
       const nextPort = port + 1;
       console.warn(`Port ${port} is already in use. Retrying on port ${nextPort}...`);
