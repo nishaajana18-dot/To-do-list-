@@ -35,12 +35,12 @@ npm run dev
 
 The server will:
 
-- Serve the to-do app at `http://localhost:3000/` (or the next free port)
+- Serve the to-do app at `http://localhost:3001/` (or the next free port)
 - Expose LLM API endpoints under `/api`
 
 ## LLM server API
 
-Base URL: `http://localhost:3000`
+Base URL: `http://localhost:3001`
 
 - `GET /api`
 	- Returns server status, configured model name, and endpoint info.
@@ -75,14 +75,14 @@ Job status endpoint:
 
 ```powershell
 $body = @{ prompt = "Say hello in one short sentence." } | ConvertTo-Json
-Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/infer -ContentType "application/json" -Body $body
+Invoke-RestMethod -Method Post -Uri http://localhost:3001/api/infer -ContentType "application/json" -Body $body
 ```
 
 ### Environment variables (LLM server)
 
 Set these in `llm-server/.env` if needed:
 
-- `PORT` (default: `3000`)
+- `PORT` (default: `3001`)
 - `OLLAMA_MODEL` (default: `qwen3:8b`)
 - `OLLAMA_URL` (default: `http://localhost:11434/api/generate`)
 - `OLLAMA_TIMEOUT_MS` (default: `60000`)
@@ -97,7 +97,7 @@ Use PowerShell to queue prompts and keep submitting more while earlier ones run:
 
 ```powershell
 Set-Location "C:\Users\nisha\OneDrive\Documents\GitHub\draft"
-.\llm-queue.ps1 -BaseUrl "http://localhost:3000" -Interactive
+.\llm-queue.ps1 -BaseUrl "http://localhost:3001" -Interactive
 ```
 
 In interactive mode, type prompts directly in terminal.
@@ -140,9 +140,9 @@ $prompts = @(
 foreach ($p in $prompts) {
 	try {
 		$body = @{ prompt = $p } | ConvertTo-Json -Compress
-		$result = Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/infer -ContentType "application/json" -Body $body -TimeoutSec 90 -ErrorAction Stop
+		$result = Invoke-RestMethod -Method Post -Uri http://localhost:3001/api/infer -ContentType "application/json" -Body $body -TimeoutSec 90 -ErrorAction Stop
 		Write-Host "QUEUED: $p"
-		Write-Host "Track at: http://localhost:3000$($result.resultPage)"
+		Write-Host "Track at: http://localhost:3001$($result.resultPage)"
 	} catch {
 		Write-Warning "FAILED: $p"
 		Write-Warning $_.Exception.Message

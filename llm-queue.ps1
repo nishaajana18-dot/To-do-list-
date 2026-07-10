@@ -1,7 +1,7 @@
 param(
   [string[]]$Prompts,
 
-  [string]$BaseUrl = "http://localhost:3000",
+  [string]$BaseUrl = "http://localhost:3001",
 
   [int]$PollSeconds = 2,
 

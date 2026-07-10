@@ -321,7 +321,7 @@ app.use((error, req, res, next) => {
   return next(error);
 });
 
-const DEFAULT_PORT = 3000;
+const DEFAULT_PORT = 3001;
 const MAX_PORT_ATTEMPTS = 10;
 
 function parsePreferredPort(rawPort) {
