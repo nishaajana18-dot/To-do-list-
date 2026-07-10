@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const { randomUUID } = require("crypto");
 const express = require("express");
 const path = require("path");
 
@@ -34,63 +35,107 @@ function parsePositiveInt(value, fallback) {
 
 const INFER_QUEUE_CONCURRENCY = parsePositiveInt(process.env.INFER_QUEUE_CONCURRENCY, 1);
 const INFER_QUEUE_MAX_SIZE = parsePositiveInt(process.env.INFER_QUEUE_MAX_SIZE, 100);
+const INFER_JOB_RETENTION_MS = parsePositiveInt(process.env.INFER_JOB_RETENTION_MS, 3600000);
 
 const inferQueue = [];
+const inferJobs = new Map();
 let activeInferRequests = 0;
 
 function getQueueStatus() {
+  const queued = inferQueue.length;
+  const processing = activeInferRequests;
+  const completed = Array.from(inferJobs.values()).filter((job) =>
+    ["completed", "failed", "timed_out"].includes(job.status)
+  ).length;
+
   return {
-    active: activeInferRequests,
-    queued: inferQueue.length,
+    active: processing,
+    queued,
+    completed,
+    totalJobsTracked: inferJobs.size,
     concurrency: INFER_QUEUE_CONCURRENCY,
     maxSize: INFER_QUEUE_MAX_SIZE
   };
 }
 
-function processInferQueue() {
-  while (activeInferRequests < INFER_QUEUE_CONCURRENCY && inferQueue.length > 0) {
-    const nextJob = inferQueue.shift();
-    activeInferRequests += 1;
-
-    (async () => {
-      const startedAt = Date.now();
-
-      try {
-        const llmResponse = await queryOllama(nextJob.prompt);
-        nextJob.resolve({
-          llmResponse,
-          queuedMs: startedAt - nextJob.enqueuedAt,
-          processingMs: Date.now() - startedAt
-        });
-      } catch (error) {
-        nextJob.reject(error);
-      } finally {
-        activeInferRequests -= 1;
-        processInferQueue();
-      }
-    })();
+function cleanupExpiredJobs() {
+  const now = Date.now();
+  for (const [id, job] of inferJobs.entries()) {
+    if (!["completed", "failed", "timed_out"].includes(job.status)) {
+      continue;
+    }
+    if (!job.completedAt) {
+      continue;
+    }
+    if (now - job.completedAt > INFER_JOB_RETENTION_MS) {
+      inferJobs.delete(id);
+    }
   }
 }
 
-function enqueueInference(prompt) {
+function classifyJobFailure(error) {
+  if (typeof error?.message === "string" && error.message.toLowerCase().includes("timed out")) {
+    return "timed_out";
+  }
+  return "failed";
+}
+
+function createInferenceJob(prompt) {
+  cleanupExpiredJobs();
+
   if (inferQueue.length >= INFER_QUEUE_MAX_SIZE) {
     const queueError = new Error("Inference queue is full");
     queueError.code = "QUEUE_FULL";
     throw queueError;
   }
 
-  return new Promise((resolve, reject) => {
-    const enqueuedAt = Date.now();
+  const jobId = randomUUID();
+  const createdAt = Date.now();
+  const job = {
+    id: jobId,
+    prompt,
+    status: "queued",
+    createdAt,
+    startedAt: null,
+    completedAt: null,
+    response: null,
+    error: null
+  };
 
-    inferQueue.push({
-      prompt,
-      enqueuedAt,
-      resolve,
-      reject
-    });
+  inferJobs.set(jobId, job);
+  inferQueue.push(jobId);
+  processInferQueue();
+  return job;
+}
 
-    processInferQueue();
-  });
+function processInferQueue() {
+  while (activeInferRequests < INFER_QUEUE_CONCURRENCY && inferQueue.length > 0) {
+    const nextJobId = inferQueue.shift();
+    const nextJob = inferJobs.get(nextJobId);
+    if (!nextJob) {
+      continue;
+    }
+
+    activeInferRequests += 1;
+
+    (async () => {
+      nextJob.status = "processing";
+      nextJob.startedAt = Date.now();
+
+      try {
+        const llmResponse = await queryOllama(nextJob.prompt);
+        nextJob.status = "completed";
+        nextJob.response = llmResponse;
+      } catch (error) {
+        nextJob.status = classifyJobFailure(error);
+        nextJob.error = error.message;
+      } finally {
+        nextJob.completedAt = Date.now();
+        activeInferRequests -= 1;
+        processInferQueue();
+      }
+    })();
+  }
 }
 
 async function queryOllama(prompt) {
@@ -139,8 +184,9 @@ app.get("/api", (req, res) => {
     model: OLLAMA_MODEL,
     queue: getQueueStatus(),
     endpoints: {
-      "POST /api/infer": "Send a prompt to the local Ollama model",
+      "POST /api/infer": "Create an async prompt job and return a job URL",
       "POST /infer": "Legacy alias for /api/infer",
+      "GET /api/infer/:jobId": "Get status/result for one prompt job",
       "GET /api/queue": "Get inference queue status"
     },
     exampleBody: {
@@ -151,6 +197,36 @@ app.get("/api", (req, res) => {
 
 app.get("/api/queue", (req, res) => {
   res.json({
+    queue: getQueueStatus()
+  });
+});
+
+app.get("/api/infer/:jobId", (req, res) => {
+  const job = inferJobs.get(req.params.jobId);
+  if (!job) {
+    return res.status(404).json({
+      error: "Job not found",
+      details: "The requested job ID does not exist or has expired."
+    });
+  }
+
+  const queuedMs = job.startedAt ? job.startedAt - job.createdAt : null;
+  const processingMs = job.completedAt && job.startedAt ? job.completedAt - job.startedAt : null;
+
+  return res.json({
+    jobId: job.id,
+    status: job.status,
+    prompt: job.prompt,
+    createdAt: job.createdAt,
+    startedAt: job.startedAt,
+    completedAt: job.completedAt,
+    timing: {
+      queuedMs,
+      processingMs,
+      totalMs: job.completedAt ? job.completedAt - job.createdAt : null
+    },
+    response: job.response,
+    error: job.error,
     queue: getQueueStatus()
   });
 });
@@ -168,21 +244,19 @@ async function handleInfer(req, res) {
 
   try {
     const trimmedPrompt = prompt.trim();
-    const requestStartedAt = Date.now();
-    const queueDepthAtAccept = inferQueue.length;
-    const result = await enqueueInference(trimmedPrompt);
+    const job = createInferenceJob(trimmedPrompt);
+    const statusUrl = `/api/infer/${job.id}`;
+    const resultPage = `/llm-job.html?id=${encodeURIComponent(job.id)}`;
 
-    res.json({
+    res.status(202).json({
+      message: "Your prompt is being generated. You can submit another prompt right away.",
+      jobId: job.id,
       model: OLLAMA_MODEL,
       prompt: trimmedPrompt,
-      response: result.llmResponse,
-      timing: {
-        queuedMs: result.queuedMs,
-        processingMs: result.processingMs,
-        totalMs: Date.now() - requestStartedAt
-      },
+      statusUrl,
+      resultPage,
       queue: {
-        queueDepthAtAccept,
+        queueDepthAtAccept: inferQueue.length,
         ...getQueueStatus()
       }
     });
@@ -257,7 +331,9 @@ function startServer(port, attemptsRemaining) {
     console.log(`Express server running at http://localhost:${port}`);
     console.log(`Using Ollama model: ${OLLAMA_MODEL}`);
     console.log(`Ollama think mode: ${OLLAMA_THINK}`);
-    console.log(`Inference queue: concurrency=${INFER_QUEUE_CONCURRENCY}, maxSize=${INFER_QUEUE_MAX_SIZE}`);
+    console.log(
+      `Inference queue: concurrency=${INFER_QUEUE_CONCURRENCY}, maxSize=${INFER_QUEUE_MAX_SIZE}, retentionMs=${INFER_JOB_RETENTION_MS}`
+    );
   });
 
   server.on("error", (error) => {
