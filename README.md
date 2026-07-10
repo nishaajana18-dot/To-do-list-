@@ -53,6 +53,7 @@ Base URL: `http://localhost:3000`
 
 - `POST /api/infer`
 	- Sends a prompt to your local Ollama model.
+	- Requests are handled through a FIFO queue to prevent overload.
 	- Request body:
 
 ```json
@@ -64,6 +65,11 @@ Base URL: `http://localhost:3000`
 Legacy alias still available:
 
 - `POST /infer`
+
+Queue status endpoint:
+
+- `GET /api/queue`
+	- Returns active workers, queued request count, concurrency, and queue max size.
 
 ### Quick test (PowerShell)
 
@@ -81,6 +87,8 @@ Set these in `llm-server/.env` if needed:
 - `OLLAMA_URL` (default: `http://localhost:11434/api/generate`)
 - `OLLAMA_TIMEOUT_MS` (default: `60000`)
 - `OLLAMA_THINK` (`true` or `false`, default: `false`)
+- `INFER_QUEUE_CONCURRENCY` (default: `1`)
+- `INFER_QUEUE_MAX_SIZE` (default: `100` waiting requests)
 
 ## Example prompts
 

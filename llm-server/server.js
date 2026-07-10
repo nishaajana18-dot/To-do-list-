@@ -24,6 +24,75 @@ const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS) || 60000;
 // If true, Ollama may include model "thinking" traces depending on model support.
 const OLLAMA_THINK = (process.env.OLLAMA_THINK || "false").toLowerCase() === "true";
 
+function parsePositiveInt(value, fallback) {
+  const parsed = Number(value);
+  if (Number.isInteger(parsed) && parsed > 0) {
+    return parsed;
+  }
+  return fallback;
+}
+
+const INFER_QUEUE_CONCURRENCY = parsePositiveInt(process.env.INFER_QUEUE_CONCURRENCY, 1);
+const INFER_QUEUE_MAX_SIZE = parsePositiveInt(process.env.INFER_QUEUE_MAX_SIZE, 100);
+
+const inferQueue = [];
+let activeInferRequests = 0;
+
+function getQueueStatus() {
+  return {
+    active: activeInferRequests,
+    queued: inferQueue.length,
+    concurrency: INFER_QUEUE_CONCURRENCY,
+    maxSize: INFER_QUEUE_MAX_SIZE
+  };
+}
+
+function processInferQueue() {
+  while (activeInferRequests < INFER_QUEUE_CONCURRENCY && inferQueue.length > 0) {
+    const nextJob = inferQueue.shift();
+    activeInferRequests += 1;
+
+    (async () => {
+      const startedAt = Date.now();
+
+      try {
+        const llmResponse = await queryOllama(nextJob.prompt);
+        nextJob.resolve({
+          llmResponse,
+          queuedMs: startedAt - nextJob.enqueuedAt,
+          processingMs: Date.now() - startedAt
+        });
+      } catch (error) {
+        nextJob.reject(error);
+      } finally {
+        activeInferRequests -= 1;
+        processInferQueue();
+      }
+    })();
+  }
+}
+
+function enqueueInference(prompt) {
+  if (inferQueue.length >= INFER_QUEUE_MAX_SIZE) {
+    const queueError = new Error("Inference queue is full");
+    queueError.code = "QUEUE_FULL";
+    throw queueError;
+  }
+
+  return new Promise((resolve, reject) => {
+    const enqueuedAt = Date.now();
+
+    inferQueue.push({
+      prompt,
+      enqueuedAt,
+      resolve,
+      reject
+    });
+
+    processInferQueue();
+  });
+}
+
 async function queryOllama(prompt) {
   // Abort slow upstream calls so this API does not hang forever.
   const controller = new AbortController();
@@ -68,13 +137,21 @@ app.get("/api", (req, res) => {
     name: "Local LLM Inference Server",
     status: "ok",
     model: OLLAMA_MODEL,
+    queue: getQueueStatus(),
     endpoints: {
       "POST /api/infer": "Send a prompt to the local Ollama model",
-      "POST /infer": "Legacy alias for /api/infer"
+      "POST /infer": "Legacy alias for /api/infer",
+      "GET /api/queue": "Get inference queue status"
     },
     exampleBody: {
       prompt: "Explain quantum computing in one sentence."
     }
+  });
+});
+
+app.get("/api/queue", (req, res) => {
+  res.json({
+    queue: getQueueStatus()
   });
 });
 
@@ -90,14 +167,34 @@ async function handleInfer(req, res) {
   }
 
   try {
-    const llmResponse = await queryOllama(prompt.trim());
+    const trimmedPrompt = prompt.trim();
+    const requestStartedAt = Date.now();
+    const queueDepthAtAccept = inferQueue.length;
+    const result = await enqueueInference(trimmedPrompt);
 
     res.json({
       model: OLLAMA_MODEL,
-      prompt: prompt.trim(),
-      response: llmResponse
+      prompt: trimmedPrompt,
+      response: result.llmResponse,
+      timing: {
+        queuedMs: result.queuedMs,
+        processingMs: result.processingMs,
+        totalMs: Date.now() - requestStartedAt
+      },
+      queue: {
+        queueDepthAtAccept,
+        ...getQueueStatus()
+      }
     });
   } catch (error) {
+    if (error.code === "QUEUE_FULL") {
+      return res.status(503).json({
+        error: "Inference queue is full",
+        details: `The queue can hold up to ${INFER_QUEUE_MAX_SIZE} waiting requests.`,
+        queue: getQueueStatus()
+      });
+    }
+
     res.status(502).json({
       error: "Failed to get response from Ollama",
       details: error.message
@@ -160,6 +257,7 @@ function startServer(port, attemptsRemaining) {
     console.log(`Express server running at http://localhost:${port}`);
     console.log(`Using Ollama model: ${OLLAMA_MODEL}`);
     console.log(`Ollama think mode: ${OLLAMA_THINK}`);
+    console.log(`Inference queue: concurrency=${INFER_QUEUE_CONCURRENCY}, maxSize=${INFER_QUEUE_MAX_SIZE}`);
   });
 
   server.on("error", (error) => {
