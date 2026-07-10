@@ -151,3 +151,113 @@ body {
   opacity: 0.35;
   cursor: default;
 }
+
+.panel {
+  width: min(780px, 92vw);
+  margin: 20px auto;
+  padding: 24px;
+  background-color: #11151d;
+  border-radius: 10px;
+  border: 1px solid #1a2435;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+.panel-intro {
+  color: #c9d4e5;
+}
+
+.llm-form {
+  display: grid;
+  gap: 10px;
+}
+
+.llm-form textarea {
+  resize: vertical;
+  min-height: 120px;
+  padding: 12px;
+  border: 2px solid #1f2a3c;
+  background-color: #0c1119;
+  color: #ffffff;
+  border-radius: 4px;
+}
+
+.llm-form button {
+  width: fit-content;
+  padding: 10px 16px;
+  background-color: #0a1f45;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.submit-result,
+.job-status {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #2f3e56;
+  background: #0c1119;
+}
+
+.submit-result.pending,
+.job-status.queued,
+.job-status.processing {
+  border-color: #3d5581;
+}
+
+.submit-result.success,
+.job-status.completed {
+  border-color: #2e8b57;
+}
+
+.submit-result.error,
+.job-status.failed,
+.job-status.timed_out {
+  border-color: #b14a4a;
+}
+
+.job-block {
+  margin-top: 14px;
+}
+
+.job-block pre {
+  background: #0c1119;
+  border: 1px solid #263244;
+  border-radius: 6px;
+  padding: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.page-nav {
+  margin-top: 16px;
+  display: flex;
+  gap: 16px;
+}
+
+.page-nav a {
+  color: #8ec4ff;
+}
+
+@media (max-width: 680px) {
+  body {
+    height: auto;
+    padding: 20px 0;
+    justify-content: flex-start;
+  }
+
+  #todo-app,
+  .panel {
+    width: 92vw;
+  }
+
+  #todo-list li {
+    padding-right: 12px;
+  }
+
+  .task-actions {
+    position: static;
+    margin-left: auto;
+  }
+}

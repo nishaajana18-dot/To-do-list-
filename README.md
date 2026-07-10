@@ -52,7 +52,7 @@ Base URL: `http://localhost:3000`
 	- Returns server status, configured model name, and endpoint info.
 
 - `POST /api/infer`
-	- Sends a prompt to your local Ollama model.
+	- Queues a prompt job and immediately returns a job ID and result page link.
 	- Requests are handled through a FIFO queue to prevent overload.
 	- Request body:
 
@@ -70,6 +70,12 @@ Queue status endpoint:
 
 - `GET /api/queue`
 	- Returns active workers, queued request count, concurrency, and queue max size.
+
+Job status endpoint:
+
+- `GET /api/infer/:jobId`
+	- Returns one job status: `queued`, `processing`, `completed`, `timed_out`, or `failed`.
+	- Includes response text when completed.
 
 ### Quick test (PowerShell)
 
@@ -89,6 +95,14 @@ Set these in `llm-server/.env` if needed:
 - `OLLAMA_THINK` (`true` or `false`, default: `false`)
 - `INFER_QUEUE_CONCURRENCY` (default: `1`)
 - `INFER_QUEUE_MAX_SIZE` (default: `100` waiting requests)
+- `INFER_JOB_RETENTION_MS` (default: `3600000`)
+
+## Prompt queue pages
+
+- `/llm.html`
+	- Submit a prompt and get an immediate "being generated" confirmation.
+- `/llm-job.html?id=<jobId>`
+	- Live status page for waiting/processing/completed/timed out/failed states.
 
 ## Example prompts
 
