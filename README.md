@@ -97,12 +97,25 @@ Set these in `llm-server/.env` if needed:
 - `INFER_QUEUE_MAX_SIZE` (default: `100` waiting requests)
 - `INFER_JOB_RETENTION_MS` (default: `3600000`)
 
-## Prompt queue pages
+## Terminal-first prompt queue
 
-- `/llm.html`
-	- Submit a prompt and get an immediate "being generated" confirmation.
+Use PowerShell to queue prompts and keep submitting more while earlier ones run:
+
+```powershell
+Set-Location "C:\Users\nisha\OneDrive\Documents\GitHub\draft"
+.\llm-queue.ps1 -BaseUrl "http://localhost:3000" -Interactive
+```
+
+In interactive mode, type prompts directly in terminal.
+
+- After each submit it prints: response is being created + the job result URL.
+- You can submit another prompt immediately.
+- Commands: `/status`, `/wait`, `/open <jobId>`, `/exit`
+
+Result page still exists for tracking individual jobs:
+
 - `/llm-job.html?id=<jobId>`
-	- Live status page for waiting/processing/completed/timed out/failed states.
+	- Shows waiting/processing/completed/timed out/failed states.
 
 ## Example prompts
 
