@@ -57,6 +57,7 @@ function Add-QueuedJob {
     $submit = Submit-PromptJob -Prompt $Prompt -ApiBase $ApiBase
     $resultUrl = Resolve-ResultPageUrl -ApiBase $ApiBase -ResultPage $submit.resultPage
 
+    # Track each prompt locally so terminal can poll statuses independently.
     $job = [PSCustomObject]@{
       Prompt = $Prompt
       JobId = $submit.jobId
@@ -95,6 +96,7 @@ function Update-PendingJobs {
         $job.LastStatus = $status.status
       }
 
+      # Terminal state reached: stop polling this job.
       if ($status.status -in @("completed", "timed_out", "failed")) {
         $job.Completed = $true
 
@@ -143,6 +145,7 @@ if ($Interactive -or $Prompts.Count -eq 0) {
   Write-Host "Commands: /status, /wait, /open <jobId>, /exit"
 
   while ($true) {
+    # Keep polling asynchronously while waiting for next user input.
     Update-PendingJobs -ApiBase $BaseUrl -JobStore $jobs
     $inputText = Read-Host "Prompt or command"
 

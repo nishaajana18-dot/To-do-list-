@@ -166,32 +166,6 @@ body {
   color: #c9d4e5;
 }
 
-.llm-form {
-  display: grid;
-  gap: 10px;
-}
-
-.llm-form textarea {
-  resize: vertical;
-  min-height: 120px;
-  padding: 12px;
-  border: 2px solid #1f2a3c;
-  background-color: #0c1119;
-  color: #ffffff;
-  border-radius: 4px;
-}
-
-.llm-form button {
-  width: fit-content;
-  padding: 10px 16px;
-  background-color: #0a1f45;
-  color: #ffffff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.submit-result,
 .job-status {
   margin-top: 16px;
   padding: 12px;
@@ -200,18 +174,15 @@ body {
   background: #0c1119;
 }
 
-.submit-result.pending,
 .job-status.queued,
 .job-status.processing {
   border-color: #3d5581;
 }
 
-.submit-result.success,
 .job-status.completed {
   border-color: #2e8b57;
 }
 
-.submit-result.error,
 .job-status.failed,
 .job-status.timed_out {
   border-color: #b14a4a;

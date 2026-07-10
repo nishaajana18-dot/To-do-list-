@@ -17,12 +17,7 @@ From the project root, install packages:
 npm install
 ```
 
-Then install server dependencies:
-
-```bash
-cd llm-server
-npm install
-```
+No second install is needed. All dependencies are managed from the root `package.json`.
 
 ## Run locally
 
@@ -32,10 +27,9 @@ You can open `index.html` directly in a browser, but serving via HTTP is preferr
 
 ### To-Do app + LLM server (recommended)
 
-Run the Express server from `llm-server/`:
+Run the Express server from the project root:
 
 ```bash
-cd llm-server
 npm run dev
 ```
 
@@ -112,9 +106,9 @@ In interactive mode, type prompts directly in terminal.
 - You can submit another prompt immediately.
 - Commands: `/status`, `/wait`, `/open <jobId>`, `/exit`
 
-Result page still exists for tracking individual jobs:
+Result page still exists for tracking individual jobs, with a unique URL per prompt:
 
-- `/llm-job.html?id=<jobId>`
+- `/llm-job/<jobId>`
 	- Shows waiting/processing/completed/timed out/failed states.
 
 ## Example prompts
@@ -147,8 +141,8 @@ foreach ($p in $prompts) {
 	try {
 		$body = @{ prompt = $p } | ConvertTo-Json -Compress
 		$result = Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/infer -ContentType "application/json" -Body $body -TimeoutSec 90 -ErrorAction Stop
-		Write-Host "OK: $p"
-		Write-Host "-> $($result.response)"
+		Write-Host "QUEUED: $p"
+		Write-Host "Track at: http://localhost:3000$($result.resultPage)"
 	} catch {
 		Write-Warning "FAILED: $p"
 		Write-Warning $_.Exception.Message
@@ -173,4 +167,4 @@ npm test
 - `package.json` - npm scripts and dev dependencies
 - `requirements.txt` - Local tool/version requirements
 - `llm-server/server.js` - Express server for static hosting + LLM inference
-- `llm-server/package.json` - LLM server scripts and dependencies
+- `llm-queue.ps1` - Interactive PowerShell queue client

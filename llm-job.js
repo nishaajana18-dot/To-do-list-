@@ -1,5 +1,9 @@
 const params = new URLSearchParams(window.location.search);
-const jobId = params.get('id');
+// Supports both /llm-job/<id> and legacy /llm-job.html?id=<id>.
+const jobIdFromPath = window.location.pathname.startsWith('/llm-job/')
+  ? decodeURIComponent(window.location.pathname.replace('/llm-job/', '').trim())
+  : '';
+const jobId = jobIdFromPath || params.get('id');
 
 const jobIdLabel = document.getElementById('job-id-label');
 const jobStatus = document.getElementById('job-status');
@@ -23,6 +27,7 @@ function stopPolling() {
 
 function scheduleNextPoll() {
   stopPolling();
+  // Keep polling asynchronously until terminal status is reached.
   pollTimer = setTimeout(loadJob, 2000);
 }
 

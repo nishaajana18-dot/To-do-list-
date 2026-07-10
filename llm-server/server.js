@@ -16,6 +16,10 @@ app.use(express.json());
 // This lets http://localhost:<port>/ load index.html, script.js, and style.css.
 const WEB_ROOT = path.resolve(__dirname, "..");
 app.use(express.static(WEB_ROOT));
+// Each job gets a unique URL path so users can track prompts separately.
+app.get("/llm-job/:jobId", (req, res) => {
+  res.sendFile(path.join(WEB_ROOT, "llm-job.html"));
+});
 
 // Change this if your model has a different name.
 // Run `ollama list` in PowerShell to see your exact model name.
@@ -103,6 +107,7 @@ function createInferenceJob(prompt) {
   };
 
   inferJobs.set(jobId, job);
+  // FIFO: jobs are processed in insertion order.
   inferQueue.push(jobId);
   processInferQueue();
   return job;
@@ -118,6 +123,7 @@ function processInferQueue() {
 
     activeInferRequests += 1;
 
+    // Worker loop for one queued job.
     (async () => {
       nextJob.status = "processing";
       nextJob.startedAt = Date.now();
@@ -246,7 +252,7 @@ async function handleInfer(req, res) {
     const trimmedPrompt = prompt.trim();
     const job = createInferenceJob(trimmedPrompt);
     const statusUrl = `/api/infer/${job.id}`;
-    const resultPage = `/llm-job.html?id=${encodeURIComponent(job.id)}`;
+    const resultPage = `/llm-job/${encodeURIComponent(job.id)}`;
 
     res.status(202).json({
       message: "Your prompt is being generated. You can submit another prompt right away.",
