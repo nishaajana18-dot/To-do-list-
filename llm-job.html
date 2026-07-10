@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt Result</title>
+  <link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
+  <main id="llm-job-app" class="panel">
+    <h1>Prompt Result</h1>
+    <p id="job-id-label" class="panel-intro"></p>
+
+    <section id="job-status" class="job-status" aria-live="polite"></section>
+
+    <section class="job-block">
+      <h2>Prompt</h2>
+      <pre id="job-prompt"></pre>
+    </section>
+
+    <section class="job-block">
+      <h2>Response</h2>
+      <pre id="job-response"></pre>
+    </section>
+
+    <section class="job-block">
+      <h2>Queue Snapshot</h2>
+      <pre id="job-queue"></pre>
+    </section>
+
+    <nav class="page-nav">
+      <a href="/llm.html">Ask another prompt</a>
+      <a href="/">Back to To-Do List</a>
+    </nav>
+  </main>
+
+  <script src="llm-job.js"></script>
+</body>
+</html>
