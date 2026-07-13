@@ -1,5 +1,6 @@
 const { randomUUID } = require("crypto");
 const express = require("express");
+const morgan = require("morgan");
 const path = require("path");
 
 // Always load the server-specific config, regardless of the launch directory.
@@ -8,6 +9,7 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 const app = express();
 
 app.use(express.json());
+app.use(morgan("dev"));
 
 // This Express app has two jobs:
 // 1) Serve the front-end to-do list files (index.html, script.js, style.css).
@@ -80,7 +82,6 @@ function getQueueStatus() {
     maxSize: INFER_QUEUE_MAX_SIZE
   };
 }
-
 function listJobs() {
   return Array.from(inferJobs.values())
     .sort((a, b) => b.createdAt - a.createdAt)
