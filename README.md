@@ -48,12 +48,34 @@ Base URL: `http://localhost:3001`
 - `POST /api/infer`
 	- Queues a prompt job and immediately returns a job ID and result page link.
 	- Requests are handled through a FIFO queue to prevent overload.
-	- Request body:
+	- Exact request format:
+		- Header: `Content-Type: application/json`
+		- Body must be a JSON object with a non-empty string `prompt`.
+		- `prompt` is trimmed by the server, so whitespace-only prompts are rejected.
+	- Valid request body:
 
 ```json
 {
 	"prompt": "Explain quantum computing in one sentence."
 }
+```
+
+	- Invalid bodies (will return 400):
+
+```json
+{}
+```
+
+```json
+{"prompt":""}
+```
+
+```json
+{"prompt":"   "}
+```
+
+```json
+{"prompt":123}
 ```
 
 Legacy alias still available:
@@ -95,8 +117,8 @@ Set these in `llm-server/.env` if needed:
 - `INFER_QUEUE_CONCURRENCY` (default: `1`)
 - `INFER_QUEUE_MAX_SIZE` (default: `100` waiting requests)
 - `INFER_JOB_RETENTION_MS` (default: `3600000`)
-- `PORT_RETRY_COUNT` (default: `0`)
-	- `0` means do not silently jump ports; server exits if the port is already in use.
+- `PORT_RETRY_COUNT` (default: `10`)
+	- Default is `10` in code, so if `3001` is busy it will try `3002`, `3003`, and so on.
 
 ## Terminal-first prompt queue
 
@@ -127,6 +149,11 @@ Invoke-RestMethod -Method Get -Uri http://localhost:3001/api/jobs
 ## Example prompts
 
 Use any of these with `POST /api/infer`.
+Each line below is the string value for `prompt` only. Send each one in this exact shape:
+
+```json
+{ "prompt": "<your prompt text>" }
+```
 
 Tip: If responses time out, keep prompts short and request very small outputs (for example, "in one sentence" or "in 3 bullets").
 

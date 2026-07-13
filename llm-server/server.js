@@ -52,7 +52,7 @@ function parseNonNegativeInt(value, fallback) {
 const INFER_QUEUE_CONCURRENCY = parsePositiveInt(process.env.INFER_QUEUE_CONCURRENCY, 1);
 const INFER_QUEUE_MAX_SIZE = parsePositiveInt(process.env.INFER_QUEUE_MAX_SIZE, 100);
 const INFER_JOB_RETENTION_MS = parsePositiveInt(process.env.INFER_JOB_RETENTION_MS, 3600000);
-const PORT_RETRY_COUNT = parseNonNegativeInt(process.env.PORT_RETRY_COUNT, 0);
+const PORT_RETRY_COUNT = parseNonNegativeInt(process.env.PORT_RETRY_COUNT, 10);
 
 const inferQueue = [];
 const inferJobs = new Map();
