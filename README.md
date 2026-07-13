@@ -65,6 +65,11 @@ Queue status endpoint:
 - `GET /api/queue`
 	- Returns active workers, queued request count, concurrency, and queue max size.
 
+All jobs endpoint:
+
+- `GET /api/jobs`
+	- Returns all tracked jobs with each job's unique status URL and unique result page URL.
+
 Job status endpoint:
 
 - `GET /api/infer/:jobId`
@@ -90,6 +95,8 @@ Set these in `llm-server/.env` if needed:
 - `INFER_QUEUE_CONCURRENCY` (default: `1`)
 - `INFER_QUEUE_MAX_SIZE` (default: `100` waiting requests)
 - `INFER_JOB_RETENTION_MS` (default: `3600000`)
+- `PORT_RETRY_COUNT` (default: `0`)
+	- `0` means do not silently jump ports; server exits if the port is already in use.
 
 ## Terminal-first prompt queue
 
@@ -110,6 +117,12 @@ Result page still exists for tracking individual jobs, with a unique URL per pro
 
 - `/llm-job/<jobId>`
 	- Shows waiting/processing/completed/timed out/failed states.
+
+Find every queued/completed/timed-out job in one place:
+
+```powershell
+Invoke-RestMethod -Method Get -Uri http://localhost:3001/api/jobs
+```
 
 ## Example prompts
 

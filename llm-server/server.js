@@ -15,10 +15,14 @@ app.use(express.json());
 // Serve the root to-do app files from this same server process.
 // This lets http://localhost:<port>/ load index.html, script.js, and style.css.
 const WEB_ROOT = path.resolve(__dirname, "..");
-app.use(express.static(WEB_ROOT));
+app.use(express.static(WEB_ROOT, { index: false }));
 // Each job gets a unique URL path so users can track prompts separately.
 app.get("/llm-job/:jobId", (req, res) => {
   res.sendFile(path.join(WEB_ROOT, "llm-job.html"));
+});
+// Keep the root focused on LLM API metadata; to-do app remains at /index.html.
+app.get("/", (req, res) => {
+  res.redirect("/api");
 });
 
 // Change this if your model has a different name.
@@ -37,9 +41,18 @@ function parsePositiveInt(value, fallback) {
   return fallback;
 }
 
+function parseNonNegativeInt(value, fallback) {
+  const parsed = Number(value);
+  if (Number.isInteger(parsed) && parsed >= 0) {
+    return parsed;
+  }
+  return fallback;
+}
+
 const INFER_QUEUE_CONCURRENCY = parsePositiveInt(process.env.INFER_QUEUE_CONCURRENCY, 1);
 const INFER_QUEUE_MAX_SIZE = parsePositiveInt(process.env.INFER_QUEUE_MAX_SIZE, 100);
 const INFER_JOB_RETENTION_MS = parsePositiveInt(process.env.INFER_JOB_RETENTION_MS, 3600000);
+const PORT_RETRY_COUNT = parseNonNegativeInt(process.env.PORT_RETRY_COUNT, 0);
 
 const inferQueue = [];
 const inferJobs = new Map();
@@ -60,6 +73,20 @@ function getQueueStatus() {
     concurrency: INFER_QUEUE_CONCURRENCY,
     maxSize: INFER_QUEUE_MAX_SIZE
   };
+}
+
+function listJobs() {
+  return Array.from(inferJobs.values())
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .map((job) => ({
+      jobId: job.id,
+      status: job.status,
+      prompt: job.prompt,
+      createdAt: job.createdAt,
+      completedAt: job.completedAt,
+      statusUrl: `/api/infer/${job.id}`,
+      resultPage: `/llm-job/${job.id}`
+    }));
 }
 
 function cleanupExpiredJobs() {
@@ -193,6 +220,7 @@ app.get("/api", (req, res) => {
       "POST /api/infer": "Create an async prompt job and return a job URL",
       "POST /infer": "Legacy alias for /api/infer",
       "GET /api/infer/:jobId": "Get status/result for one prompt job",
+      "GET /api/jobs": "List all tracked jobs and their unique URLs",
       "GET /api/queue": "Get inference queue status"
     },
     exampleBody: {
@@ -204,6 +232,13 @@ app.get("/api", (req, res) => {
 app.get("/api/queue", (req, res) => {
   res.json({
     queue: getQueueStatus()
+  });
+});
+
+app.get("/api/jobs", (req, res) => {
+  res.json({
+    queue: getQueueStatus(),
+    jobs: listJobs()
   });
 });
 
@@ -322,7 +357,7 @@ app.use((error, req, res, next) => {
 });
 
 const DEFAULT_PORT = 3001;
-const MAX_PORT_ATTEMPTS = 10;
+const MAX_PORT_ATTEMPTS = PORT_RETRY_COUNT;
 
 function parsePreferredPort(rawPort) {
   const parsed = Number(rawPort);
@@ -349,6 +384,13 @@ function startServer(port, attemptsRemaining) {
       console.warn(`Port ${port} is already in use. Retrying on port ${nextPort}...`);
       startServer(nextPort, attemptsRemaining - 1);
       return;
+    }
+
+    if (error.code === "EADDRINUSE") {
+      console.error(
+        `Port ${port} is already in use. Stop that process or set PORT_RETRY_COUNT > 0 to allow fallback ports.`
+      );
+      process.exit(1);
     }
 
     console.error("Failed to start server:", error.message);
