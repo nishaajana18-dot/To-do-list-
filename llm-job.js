@@ -12,6 +12,39 @@ const jobResponse = document.getElementById('job-response');
 const jobQueue = document.getElementById('job-queue');
 
 let pollTimer = null;
+const POLL_INTERVAL_MS = 2000;
+
+function formatDuration(ms) {
+  if (!Number.isFinite(ms) || ms < 0) {
+    return 'n/a';
+  }
+
+  if (ms < 1000) {
+    return `${ms}ms`;
+  }
+
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function renderQueueSnapshot(data) {
+  const queue = data.queue || {};
+  const lines = [
+    `Request number: ${data.requestNumber ?? 'pending'}`,
+    `Status: ${data.status || 'unknown'}`,
+    `Timeout: ${formatDuration(data.timeoutMs)}`,
+    `Queued jobs: ${queue.queued ?? 0}`,
+    `Active jobs: ${queue.active ?? 0}`,
+    `Completed jobs: ${queue.completed ?? 0}`
+  ];
+
+  if (data.timing) {
+    lines.push(`Time in queue: ${formatDuration(data.timing.queuedMs)}`);
+    lines.push(`Processing time: ${formatDuration(data.timing.processingMs)}`);
+    lines.push(`Total time: ${formatDuration(data.timing.totalMs)}`);
+  }
+
+  return lines.join('\n');
+}
 
 function setStatus(text, type) {
   jobStatus.className = `job-status ${type}`;
@@ -28,42 +61,43 @@ function stopPolling() {
 function scheduleNextPoll() {
   stopPolling();
   // Keep polling asynchronously until terminal status is reached.
-  pollTimer = setTimeout(loadJob, 2000);
+  pollTimer = setTimeout(loadJob, POLL_INTERVAL_MS);
 }
 
 function renderJob(data) {
-  jobPrompt.textContent = data.prompt || '';
-  jobQueue.textContent = JSON.stringify(data.queue || {}, null, 2);
+  const requestLabel = data.requestNumber ? `Prompt #${data.requestNumber}` : 'Prompt';
+  jobPrompt.textContent = data.prompt ? `${requestLabel}\n${data.prompt}` : `${requestLabel}\nWaiting for prompt details...`;
+  jobQueue.textContent = renderQueueSnapshot(data);
 
   if (data.status === 'queued') {
-    jobResponse.textContent = 'Waiting in queue...';
-    setStatus('Your request is waiting in queue.', 'queued');
+    jobResponse.textContent = 'Response\nWaiting in queue...';
+    setStatus(`Prompt ${data.requestNumber ?? ''} is waiting in queue.`.trim(), 'queued');
     scheduleNextPoll();
     return;
   }
 
   if (data.status === 'processing') {
-    jobResponse.textContent = 'Generating response...';
-    setStatus('Your prompt is being processed right now.', 'processing');
+    jobResponse.textContent = 'Response\nGenerating response...';
+    setStatus(`Prompt ${data.requestNumber ?? ''} is being processed right now.`.trim(), 'processing');
     scheduleNextPoll();
     return;
   }
 
   if (data.status === 'completed') {
-    jobResponse.textContent = data.response || '';
+    jobResponse.textContent = data.response ? `Response\n${data.response}` : 'Response\nNo text was returned.';
     setStatus('Response ready.', 'completed');
     stopPolling();
     return;
   }
 
   if (data.status === 'timed_out') {
-    jobResponse.textContent = data.error || 'The request timed out.';
-    setStatus('Request timed out.', 'timed_out');
+    jobResponse.textContent = `Response\n${data.error || 'The request timed out.'}`;
+    setStatus(`Request timed out after ${formatDuration(data.timeoutMs)}.`, 'timed_out');
     stopPolling();
     return;
   }
 
-  jobResponse.textContent = data.error || 'Request failed.';
+  jobResponse.textContent = `Response\n${data.error || 'Request failed.'}`;
   setStatus('Request failed.', 'failed');
   stopPolling();
 }
@@ -71,7 +105,9 @@ function renderJob(data) {
 async function loadJob() {
   if (!jobId) {
     setStatus('Missing job ID. Open this page from the queue confirmation link.', 'failed');
-    jobResponse.textContent = '';
+    jobPrompt.textContent = 'Prompt\nNo prompt was loaded.';
+    jobResponse.textContent = 'Response\nUnable to load a response without a job ID.';
+    jobQueue.textContent = 'Request number: n/a\nStatus: failed';
     return;
   }
 
@@ -82,7 +118,9 @@ async function loadJob() {
     if (!response.ok) {
       const errorText = payload.error ? `${payload.error}: ${payload.details || ''}` : 'Unable to load this job.';
       setStatus(errorText, 'failed');
-      jobResponse.textContent = '';
+      jobPrompt.textContent = 'Prompt\nUnable to load prompt details.';
+      jobResponse.textContent = `Response\n${errorText}`;
+      jobQueue.textContent = 'Request number: n/a\nStatus: failed';
       stopPolling();
       return;
     }
@@ -90,7 +128,7 @@ async function loadJob() {
     renderJob(payload);
   } catch (error) {
     setStatus(`Network error: ${error.message}`, 'failed');
-    jobResponse.textContent = '';
+    jobResponse.textContent = `Response\nTemporary network problem: ${error.message}`;
     scheduleNextPoll();
   }
 }
@@ -98,8 +136,19 @@ async function loadJob() {
 if (!jobId) {
   jobIdLabel.textContent = 'No job ID was provided.';
   setStatus('Missing job ID.', 'failed');
+  jobPrompt.textContent = 'Prompt\nNo prompt was loaded.';
+  jobResponse.textContent = 'Response\nUnable to load a response without a job ID.';
+  jobQueue.textContent = 'Request number: n/a\nStatus: failed';
 } else {
   jobIdLabel.textContent = `Tracking job: ${jobId}`;
   setStatus('Loading job status...', 'processing');
   loadJob();
 }
+
+window.__llmJob = {
+  formatDuration,
+  renderJob,
+  renderQueueSnapshot,
+  loadJob,
+  stopPolling
+};

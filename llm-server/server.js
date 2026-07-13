@@ -30,6 +30,7 @@ app.get("/", (req, res) => {
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen3:8b";
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434/api/generate";
 const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS) || 60000;
+const MAX_REQUEST_TIMEOUT_MS = Number(process.env.MAX_REQUEST_TIMEOUT_MS) || 300000;
 // If true, Ollama may include model "thinking" traces depending on model support.
 const OLLAMA_THINK = (process.env.OLLAMA_THINK || "false").toLowerCase() === "true";
 
@@ -57,6 +58,7 @@ const PORT_RETRY_COUNT = parseNonNegativeInt(process.env.PORT_RETRY_COUNT, 10);
 const inferQueue = [];
 const inferJobs = new Map();
 let activeInferRequests = 0;
+let nextRequestNumber = 1;
 
 function getQueueStatus() {
   const queued = inferQueue.length;
@@ -80,10 +82,12 @@ function listJobs() {
     .sort((a, b) => b.createdAt - a.createdAt)
     .map((job) => ({
       jobId: job.id,
+      requestNumber: job.requestNumber,
       status: job.status,
       prompt: job.prompt,
       createdAt: job.createdAt,
       completedAt: job.completedAt,
+      timeoutMs: job.timeoutMs,
       statusUrl: `/api/infer/${job.id}`,
       resultPage: `/llm-job/${job.id}`
     }));
@@ -111,7 +115,7 @@ function classifyJobFailure(error) {
   return "failed";
 }
 
-function createInferenceJob(prompt) {
+function createInferenceJob(prompt, timeoutMs) {
   cleanupExpiredJobs();
 
   if (inferQueue.length >= INFER_QUEUE_MAX_SIZE) {
@@ -124,7 +128,9 @@ function createInferenceJob(prompt) {
   const createdAt = Date.now();
   const job = {
     id: jobId,
+    requestNumber: nextRequestNumber++,
     prompt,
+    timeoutMs,
     status: "queued",
     createdAt,
     startedAt: null,
@@ -156,7 +162,7 @@ function processInferQueue() {
       nextJob.startedAt = Date.now();
 
       try {
-        const llmResponse = await queryOllama(nextJob.prompt);
+        const llmResponse = await queryOllama(nextJob.prompt, nextJob.timeoutMs);
         nextJob.status = "completed";
         nextJob.response = llmResponse;
       } catch (error) {
@@ -171,10 +177,20 @@ function processInferQueue() {
   }
 }
 
-async function queryOllama(prompt) {
+function resolveRequestTimeoutMs(requestedTimeoutMs) {
+  const parsed = Number(requestedTimeoutMs);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return OLLAMA_TIMEOUT_MS;
+  }
+
+  return Math.min(parsed, MAX_REQUEST_TIMEOUT_MS);
+}
+
+async function queryOllama(prompt, timeoutMs) {
   // Abort slow upstream calls so this API does not hang forever.
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+  const effectiveTimeoutMs = resolveRequestTimeoutMs(timeoutMs);
+  const timeoutId = setTimeout(() => controller.abort(), effectiveTimeoutMs);
 
   let response;
   try {
@@ -193,7 +209,7 @@ async function queryOllama(prompt) {
     });
   } catch (error) {
     if (error.name === "AbortError") {
-      throw new Error(`Ollama request timed out after ${OLLAMA_TIMEOUT_MS}ms`);
+      throw new Error(`Ollama request timed out after ${effectiveTimeoutMs}ms`);
     }
     throw error;
   } finally {
@@ -224,7 +240,8 @@ app.get("/api", (req, res) => {
       "GET /api/queue": "Get inference queue status"
     },
     exampleBody: {
-      prompt: "Explain quantum computing in one sentence."
+      prompt: "Explain quantum computing in one sentence.",
+      timeoutMs: 45000
     }
   });
 });
@@ -256,8 +273,10 @@ app.get("/api/infer/:jobId", (req, res) => {
 
   return res.json({
     jobId: job.id,
+    requestNumber: job.requestNumber,
     status: job.status,
     prompt: job.prompt,
+    timeoutMs: job.timeoutMs,
     createdAt: job.createdAt,
     startedAt: job.startedAt,
     completedAt: job.completedAt,
@@ -276,6 +295,7 @@ app.get("/api/infer/:jobId", (req, res) => {
 // This is the LLM side: it validates the prompt and forwards it to Ollama.
 async function handleInfer(req, res) {
   const prompt = req.body.prompt;
+  const timeoutMs = resolveRequestTimeoutMs(req.body.timeoutMs);
 
   if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
     return res.status(400).json({
@@ -285,15 +305,17 @@ async function handleInfer(req, res) {
 
   try {
     const trimmedPrompt = prompt.trim();
-    const job = createInferenceJob(trimmedPrompt);
+    const job = createInferenceJob(trimmedPrompt, timeoutMs);
     const statusUrl = `/api/infer/${job.id}`;
     const resultPage = `/llm-job/${encodeURIComponent(job.id)}`;
 
     res.status(202).json({
       message: "Your prompt is being generated. You can submit another prompt right away.",
       jobId: job.id,
+      requestNumber: job.requestNumber,
       model: OLLAMA_MODEL,
       prompt: trimmedPrompt,
+      timeoutMs: job.timeoutMs,
       statusUrl,
       resultPage,
       queue: {
@@ -323,7 +345,8 @@ app.get("/api/infer", (req, res) => {
     error: "Method not allowed",
     message: "Use POST /api/infer with a JSON body.",
     exampleBody: {
-      prompt: "Say hello in one short sentence."
+      prompt: "Say hello in one short sentence.",
+      timeoutMs: 30000
     }
   });
 });
@@ -334,7 +357,8 @@ app.get("/infer", (req, res) => {
     error: "Method not allowed",
     message: "Use POST /infer with a JSON body (or POST /api/infer).",
     exampleBody: {
-      prompt: "Say hello in one short sentence."
+      prompt: "Say hello in one short sentence.",
+      timeoutMs: 30000
     }
   });
 });
@@ -346,7 +370,8 @@ app.use((error, req, res, next) => {
     return res.status(400).json({
       error: "Invalid JSON in request body",
       example: {
-        prompt: "Say hello in one short sentence."
+        prompt: "Say hello in one short sentence.",
+        timeoutMs: 30000
       },
       powerShellTip:
         "Use Invoke-RestMethod with ConvertTo-Json, or curl.exe with --% to avoid quote-escaping issues in PowerShell."

@@ -9,7 +9,9 @@ param(
 $status = Invoke-RestMethod -Method Get -Uri "$BaseUrl/api/infer/$JobId"
 
 Write-Host "JobId: $($status.jobId)"
+Write-Host "Prompt number: $($status.requestNumber)"
 Write-Host "Status: $($status.status)"
+Write-Host "Timeout: $($status.timeoutMs)ms"
 
 if ($status.status -eq "completed") {
   Write-Host "Response: $($status.response)"

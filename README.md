@@ -46,17 +46,19 @@ Base URL: `http://localhost:3001`
 	- Returns server status, configured model name, and endpoint info.
 
 - `POST /api/infer`
-	- Queues a prompt job and immediately returns a job ID and result page link.
+	- Queues a prompt job and immediately returns a job ID, sequential prompt number, timeout, and result page link.
 	- Requests are handled through a FIFO queue to prevent overload.
 	- Exact request format:
 		- Header: `Content-Type: application/json`
 		- Body must be a JSON object with a non-empty string `prompt`.
-		- `prompt` is trimmed by the server, so whitespace-only prompts are rejected.
+		- Optional `timeoutMs` lets you set a per-request timeout for that one prompt.
+	- `prompt` is trimmed by the server, so whitespace-only prompts are rejected.
 	- Valid request body:
 
 ```json
 {
-	"prompt": "Explain quantum computing in one sentence."
+	"prompt": "Explain quantum computing in one sentence.",
+	"timeoutMs": 45000
 }
 ```
 
@@ -96,12 +98,19 @@ Job status endpoint:
 
 - `GET /api/infer/:jobId`
 	- Returns one job status: `queued`, `processing`, `completed`, `timed_out`, or `failed`.
-	- Includes response text when completed.
+	- Includes `requestNumber`, `timeoutMs`, queue/timing info, and response text when completed.
 
 ### Quick test (PowerShell)
 
 ```powershell
 $body = @{ prompt = "Say hello in one short sentence." } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://localhost:3001/api/infer -ContentType "application/json" -Body $body
+```
+
+Example with a per-request timeout:
+
+```powershell
+$body = @{ prompt = "Say hello in one short sentence."; timeoutMs = 15000 } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri http://localhost:3001/api/infer -ContentType "application/json" -Body $body
 ```
 
@@ -113,6 +122,7 @@ Set these in `llm-server/.env` if needed:
 - `OLLAMA_MODEL` (default: `qwen3:8b`)
 - `OLLAMA_URL` (default: `http://localhost:11434/api/generate`)
 - `OLLAMA_TIMEOUT_MS` (default: `60000`)
+- `MAX_REQUEST_TIMEOUT_MS` (default: `300000`)
 - `OLLAMA_THINK` (`true` or `false`, default: `false`)
 - `INFER_QUEUE_CONCURRENCY` (default: `1`)
 - `INFER_QUEUE_MAX_SIZE` (default: `100` waiting requests)

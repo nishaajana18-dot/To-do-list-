@@ -3,6 +3,8 @@ param(
 
   [string]$BaseUrl = "http://localhost:3001",
 
+  [int]$TimeoutMs = 60000,
+
   [int]$PollSeconds = 2,
 
   [int]$MaxWaitSeconds = 180,
@@ -13,10 +15,11 @@ param(
 function Submit-PromptJob {
   param(
     [string]$Prompt,
-    [string]$ApiBase
+    [string]$ApiBase,
+    [int]$RequestTimeoutMs
   )
 
-  $body = @{ prompt = $Prompt } | ConvertTo-Json -Compress
+  $body = @{ prompt = $Prompt; timeoutMs = $RequestTimeoutMs } | ConvertTo-Json -Compress
   return Invoke-RestMethod -Method Post -Uri "$ApiBase/api/infer" -ContentType "application/json" -Body $body
 }
 
@@ -50,29 +53,34 @@ function Add-QueuedJob {
   param(
     [string]$Prompt,
     [string]$ApiBase,
-    [System.Collections.Generic.List[object]]$JobStore
+    [System.Collections.Generic.List[object]]$JobStore,
+    [int]$RequestTimeoutMs
   )
 
   try {
-    $submit = Submit-PromptJob -Prompt $Prompt -ApiBase $ApiBase
+    $submit = Submit-PromptJob -Prompt $Prompt -ApiBase $ApiBase -RequestTimeoutMs $RequestTimeoutMs
     $resultUrl = Resolve-ResultPageUrl -ApiBase $ApiBase -ResultPage $submit.resultPage
 
     # Track each prompt locally so terminal can poll statuses independently.
     $job = [PSCustomObject]@{
       Prompt = $Prompt
       JobId = $submit.jobId
+      RequestNumber = $submit.requestNumber
       SubmittedAt = Get-Date
       LastStatus = "queued"
       Completed = $false
       Result = $null
       Error = $null
+      TimeoutMs = $submit.timeoutMs
       ResultUrl = $resultUrl
     }
     $JobStore.Add($job) | Out-Null
 
     Write-Host ""
     Write-Host "Response is being created."
+    Write-Host "Prompt number: $($job.RequestNumber)"
     Write-Host "JobId: $($job.JobId)"
+    Write-Host "Timeout: $($job.TimeoutMs)ms"
     Write-Host "Your response when done will be available at: $($job.ResultUrl)"
     Write-Host "You can ask another prompt now."
   }
@@ -102,13 +110,13 @@ function Update-PendingJobs {
 
         if ($status.status -eq "completed") {
           $job.Result = $status.response
-          Write-Host "[RESPONSE READY] JobId=$($job.JobId)"
+          Write-Host "[RESPONSE READY] Prompt#$($status.requestNumber) JobId=$($job.JobId)"
           Write-Host "Prompt: $($job.Prompt)"
           Write-Host "Response: $($job.Result)"
         }
         else {
           $job.Error = $status.error
-          Write-Warning "[END:$($status.status)] JobId=$($job.JobId) Prompt='$($job.Prompt)' Error='$($job.Error)'"
+          Write-Warning "[END:$($status.status)] Prompt#$($status.requestNumber) JobId=$($job.JobId) Prompt='$($job.Prompt)' Error='$($job.Error)'"
         }
       }
     }
@@ -126,7 +134,7 @@ function Show-JobSummary {
     return
   }
 
-  $summary = $JobStore | Select-Object JobId, LastStatus, Prompt, ResultUrl
+  $summary = $JobStore | Select-Object RequestNumber, JobId, LastStatus, TimeoutMs, Prompt, ResultUrl
   $summary | Format-Table -AutoSize
 }
 
@@ -134,7 +142,7 @@ $jobs = [System.Collections.Generic.List[object]]::new()
 
 foreach ($prompt in $Prompts) {
   if ($prompt -and $prompt.Trim()) {
-    Add-QueuedJob -Prompt $prompt.Trim() -ApiBase $BaseUrl -JobStore $jobs
+    Add-QueuedJob -Prompt $prompt.Trim() -ApiBase $BaseUrl -JobStore $jobs -RequestTimeoutMs $TimeoutMs
   }
 }
 
@@ -191,7 +199,7 @@ if ($Interactive -or $Prompts.Count -eq 0) {
       continue
     }
 
-    Add-QueuedJob -Prompt $inputText.Trim() -ApiBase $BaseUrl -JobStore $jobs
+    Add-QueuedJob -Prompt $inputText.Trim() -ApiBase $BaseUrl -JobStore $jobs -RequestTimeoutMs $TimeoutMs
   }
 }
 else {
