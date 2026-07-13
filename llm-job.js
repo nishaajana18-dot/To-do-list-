@@ -12,6 +12,7 @@ const jobResponse = document.getElementById('job-response');
 const jobQueue = document.getElementById('job-queue');
 
 let pollTimer = null;
+// Polling is intentionally lightweight; the server remains the source of truth.
 const POLL_INTERVAL_MS = 2000;
 
 function formatDuration(ms) {
@@ -43,6 +44,11 @@ function renderQueueSnapshot(data) {
     lines.push(`Total time: ${formatDuration(data.timing.totalMs)}`);
   }
 
+  if (data.status === 'processing' && data.startedAt && data.timeoutMs) {
+    const elapsedMs = Math.max(0, Date.now() - data.startedAt);
+    lines.push(`Timeout remaining: ${formatDuration(Math.max(0, data.timeoutMs - elapsedMs))}`);
+  }
+
   return lines.join('\n');
 }
 
@@ -60,7 +66,7 @@ function stopPolling() {
 
 function scheduleNextPoll() {
   stopPolling();
-  // Keep polling asynchronously until terminal status is reached.
+  // Terminal states stop polling; queued and processing jobs keep checking.
   pollTimer = setTimeout(loadJob, POLL_INTERVAL_MS);
 }
 
@@ -78,7 +84,10 @@ function renderJob(data) {
 
   if (data.status === 'processing') {
     jobResponse.textContent = 'Response\nGenerating response...';
-    setStatus(`Prompt ${data.requestNumber ?? ''} is being processed right now.`.trim(), 'processing');
+    const elapsedMs = data.startedAt ? Math.max(0, Date.now() - data.startedAt) : 0;
+    const remainingMs = data.timeoutMs ? Math.max(0, data.timeoutMs - elapsedMs) : null;
+    const timeoutText = remainingMs === null ? '' : ` Timeout in ${formatDuration(remainingMs)}.`;
+    setStatus(`Prompt ${data.requestNumber ?? ''} is being processed.${timeoutText}`.trim(), 'processing');
     scheduleNextPoll();
     return;
   }
@@ -112,6 +121,7 @@ async function loadJob() {
   }
 
   try {
+    // The status endpoint eventually returns a terminal state and response/error.
     const response = await fetch(`/api/infer/${encodeURIComponent(jobId)}`);
     const payload = await response.json();
 

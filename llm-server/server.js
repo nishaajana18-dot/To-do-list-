@@ -1,8 +1,9 @@
-require("dotenv").config();
-
 const { randomUUID } = require("crypto");
 const express = require("express");
 const path = require("path");
+
+// Always load the server-specific config, regardless of the launch directory.
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.get("/", (req, res) => {
 // Run `ollama list` in PowerShell to see your exact model name.
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen3:8b";
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434/api/generate";
+// Default processing limit is 60 seconds; callers may request up to five minutes.
 const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS) || 60000;
 const MAX_REQUEST_TIMEOUT_MS = Number(process.env.MAX_REQUEST_TIMEOUT_MS) || 300000;
 // If true, Ollama may include model "thinking" traces depending on model support.
@@ -55,9 +57,11 @@ const INFER_QUEUE_MAX_SIZE = parsePositiveInt(process.env.INFER_QUEUE_MAX_SIZE, 
 const INFER_JOB_RETENTION_MS = parsePositiveInt(process.env.INFER_JOB_RETENTION_MS, 3600000);
 const PORT_RETRY_COUNT = parseNonNegativeInt(process.env.PORT_RETRY_COUNT, 10);
 
+// Jobs live in memory and are cleared whenever this server process restarts.
 const inferQueue = [];
 const inferJobs = new Map();
 let activeInferRequests = 0;
+// Human-friendly numbers supplement UUIDs and reset to 1 on server restart.
 let nextRequestNumber = 1;
 
 function getQueueStatus() {
@@ -94,6 +98,7 @@ function listJobs() {
 }
 
 function cleanupExpiredJobs() {
+  // Only finished jobs expire; active work is never removed from the map.
   const now = Date.now();
   for (const [id, job] of inferJobs.entries()) {
     if (!["completed", "failed", "timed_out"].includes(job.status)) {
@@ -162,6 +167,7 @@ function processInferQueue() {
       nextJob.startedAt = Date.now();
 
       try {
+        // A job's timeout begins when model processing starts, not while queued.
         const llmResponse = await queryOllama(nextJob.prompt, nextJob.timeoutMs);
         nextJob.status = "completed";
         nextJob.response = llmResponse;
@@ -178,6 +184,7 @@ function processInferQueue() {
 }
 
 function resolveRequestTimeoutMs(requestedTimeoutMs) {
+  // Invalid/missing values use the default; large values are clamped safely.
   const parsed = Number(requestedTimeoutMs);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     return OLLAMA_TIMEOUT_MS;
@@ -187,7 +194,7 @@ function resolveRequestTimeoutMs(requestedTimeoutMs) {
 }
 
 async function queryOllama(prompt, timeoutMs) {
-  // Abort slow upstream calls so this API does not hang forever.
+  // Abort slow upstream calls so a model request cannot hang indefinitely.
   const controller = new AbortController();
   const effectiveTimeoutMs = resolveRequestTimeoutMs(timeoutMs);
   const timeoutId = setTimeout(() => controller.abort(), effectiveTimeoutMs);
@@ -423,5 +430,10 @@ function startServer(port, attemptsRemaining) {
   });
 }
 
-const preferredPort = parsePreferredPort(process.env.PORT);
-startServer(preferredPort, MAX_PORT_ATTEMPTS);
+// Importing the app in tests must not claim a real network port.
+if (require.main === module) {
+  const preferredPort = parsePreferredPort(process.env.PORT);
+  startServer(preferredPort, MAX_PORT_ATTEMPTS);
+}
+
+module.exports = { app };

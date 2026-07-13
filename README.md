@@ -1,4 +1,4 @@
-# To-Do List App
+# To-Do App and Local LLM Server
 
 A simple browser-based to-do list app built with HTML, CSS, and Vanilla JavaScript.
 
@@ -35,8 +35,11 @@ npm run dev
 
 The server will:
 
-- Serve the to-do app at `http://localhost:3001/` (or the next free port)
+- Serve API information at `http://localhost:3001/api`
+- Serve the to-do app at `http://localhost:3001/index.html`
 - Expose LLM API endpoints under `/api`
+
+The root URL redirects to `/api`; it does not open the to-do app.
 
 ## LLM server API
 
@@ -52,6 +55,9 @@ Base URL: `http://localhost:3001`
 		- Header: `Content-Type: application/json`
 		- Body must be a JSON object with a non-empty string `prompt`.
 		- Optional `timeoutMs` lets you set a per-request timeout for that one prompt.
+		- The timeout starts when Ollama begins processing, not while the job waits in the queue.
+		- Missing or invalid `timeoutMs` uses `OLLAMA_TIMEOUT_MS` (currently 60 seconds).
+		- Requested values above `MAX_REQUEST_TIMEOUT_MS` are capped (currently five minutes).
 	- `prompt` is trimmed by the server, so whitespace-only prompts are rejected.
 	- Valid request body:
 
@@ -99,6 +105,7 @@ Job status endpoint:
 - `GET /api/infer/:jobId`
 	- Returns one job status: `queued`, `processing`, `completed`, `timed_out`, or `failed`.
 	- Includes `requestNumber`, `timeoutMs`, queue/timing info, and response text when completed.
+	- Request numbers restart at `1` whenever the server restarts; use `jobId` to identify a job for the life of that server process.
 
 ### Quick test (PowerShell)
 
@@ -130,6 +137,10 @@ Set these in `llm-server/.env` if needed:
 - `PORT_RETRY_COUNT` (default: `10`)
 	- Default is `10` in code, so if `3001` is busy it will try `3002`, `3003`, and so on.
 
+The local `.env` currently sets `OLLAMA_TIMEOUT_MS=60000` and `PORT_RETRY_COUNT=0`. Processing therefore times out after 60 seconds by default, and startup fails instead of changing ports when `3001` is occupied.
+
+`timeoutMs` controls model processing time. PowerShell's `-TimeoutSec` controls how long its HTTP call waits; these are separate limits.
+
 ## Terminal-first prompt queue
 
 Use PowerShell to queue prompts and keep submitting more while earlier ones run:
@@ -149,6 +160,7 @@ Result page still exists for tracking individual jobs, with a unique URL per pro
 
 - `/llm-job/<jobId>`
 	- Shows waiting/processing/completed/timed out/failed states.
+	- Polls every two seconds and displays the configured timeout and remaining processing time.
 
 Find every queued/completed/timed-out job in one place:
 
@@ -202,7 +214,7 @@ foreach ($p in $prompts) {
 
 ## Run tests
 
-This project uses Jest.
+This project uses Jest. The suite covers to-do behavior, prompt result-page rendering and polling, plus server integration tests for validation, request numbering, completed responses, timeout limits, and timed-out jobs.
 
 ```bash
 npm test
@@ -214,6 +226,8 @@ npm test
 - `style.css` - App styles
 - `script.js` - App logic
 - `script.test.js` - Jest tests
+- `llm-job.test.js` - Prompt result-page rendering and polling tests
+- `llm-server.test.js` - LLM API integration and timeout tests using a fake local Ollama server
 - `package.json` - npm scripts and dev dependencies
 - `requirements.txt` - Local tool/version requirements
 - `llm-server/server.js` - Express server for static hosting + LLM inference

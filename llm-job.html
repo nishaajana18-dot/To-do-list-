@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Prompt Result</title>
-  <link rel="stylesheet" href="style.css?v=3">
+  <!-- Absolute paths are required because this page is served from /llm-job/<jobId>. -->
+  <link rel="stylesheet" href="/style.css?v=4">
 </head>
 <body>
   <main id="llm-job-app" class="panel">
@@ -37,6 +38,6 @@ Status: loading</pre>
     </nav>
   </main>
 
-  <script src="llm-job.js"></script>
+  <script src="/llm-job.js?v=4"></script>
 </body>
 </html>
