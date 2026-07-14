@@ -31,6 +31,11 @@ function submitPrompt(prompt, timeout = '60000') {
   document.getElementById('llm-submit-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 }
 
+async function flushAsync() {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
 describe('llm submit page', () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -52,7 +57,7 @@ describe('llm submit page', () => {
 
     loadSubmitPage(fetchMock);
     submitPrompt('Write a short poem.', '45000');
-    await Promise.resolve();
+    await flushAsync();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/infer');
@@ -88,7 +93,7 @@ describe('llm submit page', () => {
 
     loadSubmitPage(fetchMock);
     submitPrompt('Explain gravity.');
-    await Promise.resolve();
+    await flushAsync();
 
     expect(document.getElementById('submit-status').textContent).toContain('Inference queue is full');
     expect(document.getElementById('submit-status').textContent).toContain('max capacity');
