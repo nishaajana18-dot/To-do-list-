@@ -55,17 +55,15 @@ Base URL: `http://localhost:3001`
 	- Exact request format:
 		- Header: `Content-Type: application/json`
 		- Body must be a JSON object with a non-empty string `prompt`.
-		- Optional `timeoutMs` lets you set a per-request timeout for that one prompt.
+		- Timeout is controlled by server policy (not client request body).
 		- The timeout starts when Ollama begins processing, not while the job waits in the queue.
-		- Missing or invalid `timeoutMs` uses `OLLAMA_TIMEOUT_MS` (currently 60 seconds).
-		- Requested values above `MAX_REQUEST_TIMEOUT_MS` are capped (currently five minutes).
+		- Default effective timeout is at least 3 minutes.
 	- `prompt` is trimmed by the server, so whitespace-only prompts are rejected.
 	- Valid request body:
 
 ```json
 {
-	"prompt": "Explain quantum computing in one sentence.",
-	"timeoutMs": 45000
+	"prompt": "Explain quantum computing in one sentence."
 }
 ```
 
@@ -115,13 +113,6 @@ $body = @{ prompt = "Say hello in one short sentence." } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri http://localhost:3001/api/infer -ContentType "application/json" -Body $body
 ```
 
-Example with a per-request timeout:
-
-```powershell
-$body = @{ prompt = "Say hello in one short sentence."; timeoutMs = 15000 } | ConvertTo-Json
-Invoke-RestMethod -Method Post -Uri http://localhost:3001/api/infer -ContentType "application/json" -Body $body
-```
-
 ### Environment variables (LLM server)
 
 Set these in `llm-server/.env` if needed:
@@ -129,7 +120,8 @@ Set these in `llm-server/.env` if needed:
 - `PORT` (default: `3001`)
 - `OLLAMA_MODEL` (default: `qwen3:8b`)
 - `OLLAMA_URL` (default: `http://localhost:11434/api/generate`)
-- `OLLAMA_TIMEOUT_MS` (default: `60000`)
+- `OLLAMA_TIMEOUT_MS` (default: `180000`)
+- `MIN_REQUEST_TIMEOUT_MS` (default: `180000`)
 - `MAX_REQUEST_TIMEOUT_MS` (default: `300000`)
 - `OLLAMA_THINK` (`true` or `false`, default: `false`)
 - `INFER_QUEUE_CONCURRENCY` (default: `1`)
@@ -138,9 +130,9 @@ Set these in `llm-server/.env` if needed:
 - `PORT_RETRY_COUNT` (default: `10`)
 	- Default is `10` in code, so if `3001` is busy it will try `3002`, `3003`, and so on.
 
-The local `.env` currently sets `OLLAMA_TIMEOUT_MS=60000` and `PORT_RETRY_COUNT=0`. Processing therefore times out after 60 seconds by default, and startup fails instead of changing ports when `3001` is occupied.
+The local `.env` currently sets `OLLAMA_TIMEOUT_MS=60000` and `PORT_RETRY_COUNT=0`. With the current timeout policy, server timeout still resolves to at least 3 minutes unless you explicitly lower `MIN_REQUEST_TIMEOUT_MS`.
 
-`timeoutMs` controls model processing time. PowerShell's `-TimeoutSec` controls how long its HTTP call waits; these are separate limits.
+PowerShell's `-TimeoutSec` controls how long its HTTP call waits; this is separate from server-side model timeout.
 
 ## Terminal-first prompt queue
 
@@ -166,8 +158,8 @@ Result page still exists for tracking individual jobs, with a unique URL per pro
 Browser-first submission flow:
 
 - `/llm-submit`
-	- Submit prompts and optional `timeoutMs` directly from the browser.
-	- Immediately returns links to the unique result page (`/llm-job/<jobId>`) and status JSON (`/api/infer/<jobId>`).
+	- Submit prompts directly from the browser.
+	- Automatically opens the unique result page (`/llm-job/<jobId>`) after queueing.
 
 Find every queued/completed/timed-out job in one place:
 

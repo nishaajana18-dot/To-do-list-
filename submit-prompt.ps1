@@ -2,13 +2,11 @@ param(
   [Parameter(Mandatory = $true)]
   [string]$Prompt,
 
-  [string]$BaseUrl = "http://localhost:3001",
-
-  [int]$TimeoutMs = 60000
+  [string]$BaseUrl = "http://localhost:3001"
 )
 
 # Submit one prompt as its own async queued job.
-$body = @{ prompt = $Prompt; timeoutMs = $TimeoutMs } | ConvertTo-Json -Compress
+$body = @{ prompt = $Prompt } | ConvertTo-Json -Compress
 $job = Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/infer" -ContentType "application/json" -Body $body
 
 Write-Host "Response is being created."
