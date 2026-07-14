@@ -3,14 +3,18 @@ const promptInput = document.getElementById('prompt-input');
 const submitButton = document.getElementById('submit-prompt-btn');
 const statusBox = document.getElementById('submit-status');
 const resultSection = document.getElementById('submit-result');
+const activeRequestHeading = document.getElementById('active-request-heading');
 const resultDetails = document.getElementById('submit-result-details');
 const activePrompt = document.getElementById('active-prompt');
+const activeResponseText = document.getElementById('active-response-text');
 const resultLink = document.getElementById('result-link');
 const recentJobs = document.getElementById('recent-jobs');
 const refreshJobsButton = document.getElementById('refresh-jobs-btn');
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'timed_out']);
 let jobsPollTimer = null;
+let activeJobPollTimer = null;
+let activeJobStatusUrl = null;
 
 function setStatus(text, type = '') {
   statusBox.className = `submit-notice ${type}`.trim();
@@ -48,10 +52,76 @@ function renderAcceptedJob(payload, prompt) {
   const resultUrl = payload.statusPageUrl || payload.resultPage || '#';
 
   resultSection.hidden = false;
+  activeRequestHeading.textContent = 'Waiting in queue';
   activePrompt.textContent = prompt;
-  resultDetails.textContent = `Prompt #${payload.requestNumber ?? 'pending'} · ${formatStatus('queued')} · ${formatDate(Date.now())}`;
+  activeResponseText.textContent = 'Waiting for the model...';
+  resultDetails.textContent = `Prompt ${payload.requestNumber ?? 'pending'} - ${formatStatus('queued')} - ${formatDate(Date.now())}`;
   resultLink.href = resultUrl;
   resultSection.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderActiveJob(job) {
+  const status = job.status || 'failed';
+  activeRequestHeading.textContent = formatStatus(status);
+  resultDetails.textContent = `Prompt ${job.requestNumber ?? 'pending'} - ${formatStatus(status)} - ${formatDate(job.createdAt)}`;
+
+  if (status === 'queued') {
+    activeResponseText.textContent = 'Waiting for the model...';
+    setStatus('Your prompt is waiting in the queue.', 'queued');
+    return false;
+  }
+
+  if (status === 'processing') {
+    activeResponseText.textContent = 'The model is thinking...';
+    setStatus('The model is thinking...', 'processing');
+    return false;
+  }
+
+  if (status === 'completed') {
+    activeResponseText.textContent = job.response || 'No answer was returned.';
+    setStatus('Answer ready.', 'completed');
+    return true;
+  }
+
+  if (status === 'timed_out') {
+    activeResponseText.textContent = job.error || 'The request timed out.';
+    setStatus('The request timed out.', 'timed_out');
+    return true;
+  }
+
+  activeResponseText.textContent = job.error || 'The request failed.';
+  setStatus('The request failed.', 'failed');
+  return true;
+}
+
+function scheduleActiveJobPoll() {
+  clearTimeout(activeJobPollTimer);
+  activeJobPollTimer = setTimeout(trackActiveJob, 2000);
+}
+
+async function trackActiveJob() {
+  if (!activeJobStatusUrl) {
+    return;
+  }
+
+  try {
+    const response = await fetch(activeJobStatusUrl);
+    const job = await response.json();
+    if (!response.ok) {
+      throw new Error(job.error || 'Unable to load the response.');
+    }
+
+    const finished = renderActiveJob(job);
+    if (finished) {
+      activeJobStatusUrl = null;
+      await loadRecentJobs();
+      return;
+    }
+    scheduleActiveJobPoll();
+  } catch (error) {
+    setStatus(`Unable to refresh the response: ${error.message}`, 'failed');
+    scheduleActiveJobPoll();
+  }
 }
 
 function createJobCard(job) {
@@ -63,7 +133,7 @@ function createJobCard(job) {
 
   const number = document.createElement('span');
   number.className = 'job-number';
-  number.textContent = `#${job.requestNumber ?? '—'}`;
+  number.textContent = `#${job.requestNumber ?? '-'}`;
 
   const status = document.createElement('span');
   status.className = `status-pill ${job.status || 'unknown'}`;
@@ -81,7 +151,7 @@ function createJobCard(job) {
 
   const link = document.createElement('a');
   link.href = job.resultPage;
-  link.textContent = job.status === 'completed' ? 'Read answer' : 'View live status';
+  link.textContent = job.status === 'completed' ? 'Read answer' : 'View status';
 
   top.append(number, status);
   bottom.append(date, link);
@@ -95,7 +165,7 @@ function renderJobs(jobs) {
   if (!jobs.length) {
     const empty = document.createElement('p');
     empty.className = 'empty-state';
-    empty.textContent = 'No prompts yet. Your submitted prompts will appear here.';
+    empty.textContent = 'No prompts yet.';
     recentJobs.append(empty);
     return;
   }
@@ -140,7 +210,7 @@ async function submitPrompt(event) {
   }
 
   submitButton.disabled = true;
-  setStatus('Sending your prompt to the queue...', 'processing');
+  setStatus('Submitting...', 'processing');
 
   try {
     const response = await fetch('/api/infer', {
@@ -156,10 +226,13 @@ async function submitPrompt(event) {
       return;
     }
 
+    clearTimeout(activeJobPollTimer);
+    activeJobStatusUrl = payload.statusUrl || `/api/infer/${encodeURIComponent(payload.jobId)}`;
     renderAcceptedJob(payload, prompt);
-    setStatus('Prompt accepted. Use the live response link below while the model works.', 'queued');
+    setStatus('Prompt accepted. Waiting for the model...', 'queued');
     promptInput.value = '';
     await loadRecentJobs();
+    await trackActiveJob();
   } catch (error) {
     setStatus(`Could not reach the server: ${error.message}`, 'failed');
   } finally {
@@ -177,6 +250,8 @@ window.__llmSubmit = {
   formatStatus,
   loadRecentJobs,
   renderAcceptedJob,
+  renderActiveJob,
   renderJobs,
-  submitPrompt
+  submitPrompt,
+  trackActiveJob
 };

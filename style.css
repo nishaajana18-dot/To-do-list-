@@ -527,6 +527,28 @@ body.llm-shell {
   margin: 0;
 }
 
+.active-response {
+  background: var(--surface-deep);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin-top: 22px;
+  padding: 18px;
+}
+
+.active-response .panel-label {
+  margin-bottom: 10px;
+}
+
+.active-response pre {
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .active-prompt {
   line-height: 1.5;
   margin: 18px 0 12px;

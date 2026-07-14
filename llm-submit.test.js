@@ -9,8 +9,10 @@ function setupDom() {
       </form>
       <section id="submit-status"></section>
       <section id="submit-result" hidden>
+        <h2 id="active-request-heading"></h2>
         <p id="active-prompt"></p>
         <p id="submit-result-details"></p>
+        <pre id="active-response-text"></pre>
         <a id="result-link" href="#">View live response</a>
       </section>
       <button id="refresh-jobs-btn" type="button">Refresh</button>
@@ -39,6 +41,8 @@ async function flushAsync() {
   await Promise.resolve();
   await Promise.resolve();
   await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
 }
 
 describe('llm submit page', () => {
@@ -47,7 +51,7 @@ describe('llm submit page', () => {
     document.body.innerHTML = '';
   });
 
-  test('keeps an accepted prompt and its live response link visible', async () => {
+  test('keeps an accepted prompt visible and renders its answer inline', async () => {
     const fetchMock = jest.fn((url, options) => {
       if (url === '/api/infer' && options?.method === 'POST') {
         return response({
@@ -59,6 +63,16 @@ describe('llm submit page', () => {
           statusApiUrl: 'http://localhost:3001/api/infer/job-123'
         });
       }
+      if (url === '/api/infer/job-123') {
+        return response({
+          jobId: 'job-123',
+          requestNumber: 3,
+          status: 'completed',
+          prompt: 'Write a short poem.',
+          response: 'A quiet answer appears.',
+          createdAt: Date.now()
+        });
+      }
       return response({ jobs: [] });
     });
 
@@ -68,9 +82,11 @@ describe('llm submit page', () => {
 
     const postCall = fetchMock.mock.calls.find(([url]) => url === '/api/infer');
     expect(JSON.parse(postCall[1].body)).toEqual({ prompt: 'Write a short poem.' });
-    expect(document.getElementById('submit-status').textContent).toContain('Prompt accepted');
+    expect(document.getElementById('submit-status').textContent).toBe('Answer ready.');
     expect(document.getElementById('submit-result').hidden).toBe(false);
     expect(document.getElementById('active-prompt').textContent).toBe('Write a short poem.');
+    expect(document.getElementById('active-request-heading').textContent).toBe('Answer ready');
+    expect(document.getElementById('active-response-text').textContent).toBe('A quiet answer appears.');
     expect(document.getElementById('result-link').href).toBe('http://localhost:3001/llm-job/job-123');
   });
 

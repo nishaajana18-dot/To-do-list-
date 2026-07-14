@@ -100,8 +100,8 @@ test('serves the browser submit page and supports direct-file entry', async () =
   const html = await response.text();
 
   expect(response.status).toBe(200);
-  expect(html).toContain('href="./style.css?v=11"');
-  expect(html).toContain('src="./llm-submit.js?v=11"');
+  expect(html).toContain('href="./style.css?v=12"');
+  expect(html).toContain('src="./llm-submit.js?v=12"');
   expect(html).toContain("window.location.protocol === 'file:'");
   expect(html).toContain("window.location.replace('http://localhost:3001/llm-submit')");
 });

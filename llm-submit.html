@@ -9,7 +9,7 @@
       window.location.replace('http://localhost:3001/llm-submit');
     }
   </script>
-  <link rel="stylesheet" href="./style.css?v=11">
+  <link rel="stylesheet" href="./style.css?v=12">
 </head>
 <body class="llm-shell">
   <main id="llm-submit-app" class="llm-page">
@@ -44,6 +44,10 @@
         <h2 id="active-request-heading">Prompt accepted</h2>
         <p id="active-prompt" class="active-prompt"></p>
         <p id="submit-result-details" class="request-meta"></p>
+        <div class="active-response" aria-live="polite">
+          <p class="panel-label">Response</p>
+          <pre id="active-response-text">Waiting for the model...</pre>
+        </div>
       </div>
       <div class="active-request-actions">
         <a id="result-link" class="primary-link" href="#">View response</a>
@@ -64,6 +68,6 @@
 
   </main>
 
-  <script src="./llm-submit.js?v=11"></script>
+  <script src="./llm-submit.js?v=12"></script>
 </body>
 </html>
