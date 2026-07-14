@@ -33,20 +33,6 @@ function renderAcceptedJob(payload) {
   statusLink.href = payload.statusUrl || '#';
 }
 
-function navigateToResult(resultPage) {
-  if (!resultPage) {
-    return;
-  }
-
-  // JSDOM does not implement full navigation; store intended target for tests.
-  if (typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent || '')) {
-    window.__llmSubmitLastRedirect = resultPage;
-    return;
-  }
-
-  window.location.assign(resultPage);
-}
-
 async function submitPrompt(event) {
   event.preventDefault();
 
@@ -78,15 +64,9 @@ async function submitPrompt(event) {
       return;
     }
 
-    setStatus('Prompt queued. Opening response page...', 'queued');
+    setStatus('Prompt queued. Use the links below to open your response.', 'queued');
     renderAcceptedJob(payload);
     promptInput.value = '';
-
-    if (payload.resultPage) {
-      setTimeout(() => {
-        navigateToResult(payload.resultPage);
-      }, 400);
-    }
   } catch (error) {
     setStatus(`Network error: ${error.message}`, 'failed');
   } finally {
@@ -99,6 +79,5 @@ submitForm.addEventListener('submit', submitPrompt);
 window.__llmSubmit = {
   buildRequestBody,
   submitPrompt,
-  renderAcceptedJob,
-  navigateToResult
+  renderAcceptedJob
 };

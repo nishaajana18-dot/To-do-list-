@@ -100,8 +100,8 @@ test('serves browser submit page with absolute asset paths', async () => {
   const html = await response.text();
 
   expect(response.status).toBe(200);
-  expect(html).toContain('href="/style.css?v=6"');
-  expect(html).toContain('src="/llm-submit.js?v=6"');
+  expect(html).toContain('href="/style.css?v=7"');
+  expect(html).toContain('src="/llm-submit.js?v=7"');
 });
 
 test('rejects missing prompts and malformed JSON', async () => {

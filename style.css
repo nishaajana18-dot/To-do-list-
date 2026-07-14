@@ -240,30 +240,32 @@ body {
 .prompt-form-row {
   display: flex;
   gap: 12px;
-  align-items: flex-end;
-  justify-content: space-between;
-}
-
-.prompt-field {
-  flex: 1 1 auto;
-}
-
-.prompt-field small {
-  color: #c9d4e5;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 #submit-prompt-btn {
-  padding: 10px 16px;
+  padding: 10px 20px;
   background-color: #0a1f45;
   color: #ffffff;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+#submit-prompt-btn:hover {
+  background-color: #102d63;
 }
 
 #submit-prompt-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.submit-links {
+  margin-top: 8px;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 680px) {

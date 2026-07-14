@@ -35,12 +35,7 @@ async function flushAsync() {
 }
 
 describe('llm submit page', () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
   afterEach(() => {
-    jest.useRealTimers();
     jest.restoreAllMocks();
     document.body.innerHTML = '';
   });
@@ -61,7 +56,6 @@ describe('llm submit page', () => {
     loadSubmitPage(fetchMock);
     submitPrompt('Write a short poem.');
     await flushAsync();
-    jest.advanceTimersByTime(400);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/infer');
@@ -69,11 +63,10 @@ describe('llm submit page', () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
       prompt: 'Write a short poem.'
     });
-    expect(document.getElementById('submit-status').textContent).toContain('Opening response page');
+    expect(document.getElementById('submit-status').textContent).toContain('Use the links below');
     expect(document.getElementById('submit-result').hidden).toBe(false);
     expect(document.getElementById('result-link').getAttribute('href')).toBe('/llm-job/job-123');
     expect(document.getElementById('status-link').getAttribute('href')).toBe('/api/infer/job-123');
-    expect(window.__llmSubmitLastRedirect).toBe('/llm-job/job-123');
   });
 
   test('validates empty prompts before making a request', () => {
