@@ -600,9 +600,6 @@ body.llm-shell {
 
 /* Queue inspector */
 .queue-heading {
-  align-items: end;
-  display: flex;
-  justify-content: space-between;
   padding: 58px 0 34px;
 }
 
@@ -612,13 +609,6 @@ body.llm-shell {
   letter-spacing: -0.055em;
   line-height: 0.95;
   margin: 0;
-}
-
-.queue-heading p {
-  color: var(--muted);
-  font-family: 'Courier New', monospace;
-  font-size: 0.76rem;
-  margin: 18px 0 0;
 }
 
 .queue-list {
@@ -635,8 +625,13 @@ body.llm-shell {
   border-radius: 6px;
   display: grid;
   gap: 22px;
-  grid-template-columns: minmax(175px, 0.35fr) minmax(260px, 1fr) auto;
+  grid-template-columns: 1fr auto;
   padding: 18px 20px;
+}
+
+.queue-number {
+  color: #8ec4ff;
+  font-size: 1rem;
 }
 
 .queue-state {
@@ -654,28 +649,6 @@ body.llm-shell {
 .queue-state.completed { color: #62c98d; }
 .queue-state.timed_out,
 .queue-state.failed { color: #ff7f7f; }
-
-.queue-prompt {
-  min-width: 0;
-}
-
-.queue-prompt p {
-  line-height: 1.45;
-  margin: 0 0 7px;
-  overflow-wrap: anywhere;
-}
-
-.queue-prompt span {
-  color: var(--muted);
-  font-family: 'Courier New', monospace;
-  font-size: 0.7rem;
-}
-
-.queue-row > a {
-  color: #8ec4ff;
-  font-family: 'Courier New', monospace;
-  font-size: 0.72rem;
-}
 
 .recent-jobs {
   display: grid;
@@ -870,7 +843,5 @@ body.llm-shell {
   .response-hero { align-items: flex-start; flex-direction: column; gap: 26px; }
   .response-panel { margin-top: -1px; min-height: auto; }
   .prompt-panel { margin-top: 24px; }
-  .queue-heading { align-items: flex-start; flex-direction: column; gap: 24px; }
-  .queue-row { align-items: start; gap: 13px; grid-template-columns: 1fr auto; }
-  .queue-state { grid-column: 1 / -1; }
+  .queue-row { gap: 13px; }
 }

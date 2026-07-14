@@ -14,6 +14,7 @@ const jobQueue = document.getElementById('job-queue');
 const refreshJobButton = document.getElementById('refresh-job-btn');
 
 let pollTimer = null;
+let refreshResetTimer = null;
 // Polling is intentionally lightweight; the server remains the source of truth.
 const POLL_INTERVAL_MS = 2000;
 
@@ -150,6 +151,24 @@ async function loadJob() {
   }
 }
 
+async function refreshJob() {
+  if (!refreshJobButton) {
+    return;
+  }
+
+  clearTimeout(refreshResetTimer);
+  refreshJobButton.disabled = true;
+  refreshJobButton.textContent = 'Refreshing...';
+
+  await loadJob();
+
+  refreshJobButton.disabled = false;
+  refreshJobButton.textContent = 'Refreshed';
+  refreshResetTimer = setTimeout(() => {
+    refreshJobButton.textContent = 'Refresh status';
+  }, 1200);
+}
+
 if (!jobId) {
   jobIdLabel.textContent = 'No job ID was provided.';
   setStatus('Missing job ID.', 'failed');
@@ -162,12 +181,13 @@ if (!jobId) {
   loadJob();
 }
 
-refreshJobButton?.addEventListener('click', loadJob);
+refreshJobButton?.addEventListener('click', refreshJob);
 
 window.__llmJob = {
   formatDuration,
   renderJob,
   renderQueueSnapshot,
+  refreshJob,
   loadJob,
   stopPolling
 };

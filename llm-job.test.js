@@ -4,6 +4,7 @@ function setupDom() {
   document.body.innerHTML = `
     <main id="llm-job-app" class="panel">
       <p id="job-id-label"></p>
+      <button id="refresh-job-btn" type="button">Refresh status</button>
       <section id="job-status" class="job-status"></section>
       <pre id="job-prompt"></pre>
       <pre id="job-response"></pre>
@@ -59,6 +60,36 @@ describe('llm job page', () => {
     expect(document.getElementById('job-response').textContent).toContain('Hello there.');
     expect(document.getElementById('job-status').textContent).toBe('Response ready.');
     expect(document.getElementById('job-queue').textContent).toContain('Request number: 7');
+  });
+
+  test('refresh button fetches again and shows visible feedback', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        jobId: 'job-123',
+        requestNumber: 7,
+        status: 'completed',
+        prompt: 'Say hello.',
+        response: 'Hello there.',
+        timeoutMs: 30000,
+        queue: { queued: 0, active: 0, completed: 1 },
+        timing: { queuedMs: 100, processingMs: 1200, totalMs: 1300 }
+      })
+    });
+
+    await loadJobPage(fetchMock);
+    document.getElementById('refresh-job-btn').click();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(document.getElementById('refresh-job-btn').textContent).toBe('Refreshed');
+
+    jest.advanceTimersByTime(1200);
+    expect(document.getElementById('refresh-job-btn').textContent).toBe('Refresh status');
   });
 
   test('keeps polling while queued and eventually shows the response', async () => {

@@ -9,29 +9,19 @@
       window.location.replace('http://localhost:3001/llm-queue');
     }
   </script>
-  <link rel="stylesheet" href="./style.css?v=13">
+  <link rel="stylesheet" href="./style.css?v=14">
 </head>
 <body class="llm-shell">
   <main id="llm-queue-app" class="llm-page queue-page">
-    <header class="llm-header">
-      <a class="llm-brand" href="/llm-submit" aria-label="Local AI home">Local AI</a>
-      <a class="new-prompt-link" href="/llm-submit">New prompt</a>
-    </header>
-
     <section class="queue-heading">
-      <div>
-        <h1>Queue</h1>
-        <p id="queue-summary">Loading...</p>
-      </div>
-      <button id="refresh-queue-btn" class="refresh-button" type="button">Refresh</button>
+      <h1>Queue</h1>
     </section>
 
-    <section id="queue-status" class="submit-notice" aria-live="polite">Loading queue...</section>
     <section id="queue-list" class="queue-list" aria-live="polite">
-      <p class="empty-state">Loading prompts...</p>
+      <p class="empty-state">Loading...</p>
     </section>
   </main>
 
-  <script src="./llm-queue.js?v=1"></script>
+  <script src="./llm-queue.js?v=3"></script>
 </body>
 </html>

@@ -92,7 +92,7 @@ test('serves nested result pages with absolute asset paths', async () => {
 
   expect(response.status).toBe(200);
   expect(html).toContain('href="/style.css?v=13"');
-  expect(html).toContain('src="/llm-job.js?v=9"');
+  expect(html).toContain('src="/llm-job.js?v=10"');
 });
 
 test('serves the browser submit page and supports direct-file entry', async () => {
@@ -111,8 +111,8 @@ test('serves the queue inspector page', async () => {
   const html = await response.text();
 
   expect(response.status).toBe(200);
-  expect(html).toContain('href="./style.css?v=13"');
-  expect(html).toContain('src="./llm-queue.js?v=1"');
+  expect(html).toContain('href="./style.css?v=14"');
+  expect(html).toContain('src="./llm-queue.js?v=3"');
   expect(html).toContain('id="queue-list"');
 });
 

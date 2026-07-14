@@ -184,7 +184,7 @@ Browser-first submission flow:
 Queue inspector:
 
 - `/llm-queue`
-	- Lists every tracked prompt and links to its response page.
+	- Lists only each request number and its status without prompt text, response text, or links.
 	- Refreshes automatically and shows Waiting in Queue, Waiting for model response, Timeout, Error, or Done.
 
 Find every queued/completed/timed-out job in one place:
