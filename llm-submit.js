@@ -33,6 +33,20 @@ function renderAcceptedJob(payload) {
   statusLink.href = payload.statusUrl || '#';
 }
 
+function navigateToResult(resultPage) {
+  if (!resultPage) {
+    return;
+  }
+
+  // JSDOM does not implement full navigation; store intended target for tests.
+  if (typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent || '')) {
+    window.__llmSubmitLastRedirect = resultPage;
+    return;
+  }
+
+  window.location.assign(resultPage);
+}
+
 async function submitPrompt(event) {
   event.preventDefault();
 
@@ -70,7 +84,7 @@ async function submitPrompt(event) {
 
     if (payload.resultPage) {
       setTimeout(() => {
-        window.location.href = payload.resultPage;
+        navigateToResult(payload.resultPage);
       }, 400);
     }
   } catch (error) {
@@ -85,5 +99,6 @@ submitForm.addEventListener('submit', submitPrompt);
 window.__llmSubmit = {
   buildRequestBody,
   submitPrompt,
-  renderAcceptedJob
+  renderAcceptedJob,
+  navigateToResult
 };
