@@ -73,7 +73,7 @@ describe('llm submit page', () => {
     expect(document.getElementById('submit-result').hidden).toBe(false);
     expect(document.getElementById('result-link').getAttribute('href')).toBe('/llm-job/job-123');
     expect(document.getElementById('status-link').getAttribute('href')).toBe('/api/infer/job-123');
-    expect(window.location.pathname).toBe('/llm-job/job-123');
+    expect(window.__llmSubmitLastRedirect).toBe('/llm-job/job-123');
   });
 
   test('validates empty prompts before making a request', () => {
