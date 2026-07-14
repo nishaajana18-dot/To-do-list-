@@ -11,9 +11,9 @@ This repository also includes an Express-based local LLM inference server in `ll
 
 ## Install dependencies
 
-From the project root, install packages:
+From the project root in PowerShell, install packages:
 
-```bash
+```powershell
 npm install
 ```
 
@@ -27,9 +27,9 @@ You can open `index.html` directly in a browser, but serving via HTTP is preferr
 
 ### To-Do app + LLM server (recommended)
 
-Run the Express server from the project root:
+Run the Express server from the project root in PowerShell:
 
-```bash
+```powershell
 npm run dev
 ```
 
@@ -50,7 +50,7 @@ Base URL: `http://localhost:3001`
 	- Returns server status, configured model name, and endpoint info.
 
 - `POST /api/infer`
-	- Queues a prompt job and immediately returns a job ID, sequential prompt number, timeout, and result page link.
+	- Queues a prompt job and immediately returns a job ID, sequential prompt number, timeout, plus relative and absolute links for status/response pages.
 	- Requests are handled through a FIFO queue to prevent overload.
 	- Exact request format:
 		- Header: `Content-Type: application/json`
@@ -97,7 +97,7 @@ Queue status endpoint:
 All jobs endpoint:
 
 - `GET /api/jobs`
-	- Returns all tracked jobs with each job's unique status URL and unique result page URL.
+	- Returns all tracked jobs with each job's unique result page URL.
 
 Job status endpoint:
 
@@ -106,11 +106,27 @@ Job status endpoint:
 	- Includes `requestNumber`, `timeoutMs`, queue/timing info, and response text when completed.
 	- Request numbers restart at `1` whenever the server restarts; use `jobId` to identify a job for the life of that server process.
 
+Accepted response fields from `POST /api/infer` include:
+
+- `jobId`
+- `requestNumber`
+- `timeoutMs`
+- `statusUrl` (relative API path)
+- `statusApiUrl` (absolute API URL)
+- `resultPage` (relative browser page path)
+- `statusPageUrl` (absolute browser URL)
+
 ### Quick test (PowerShell)
 
 ```powershell
 $body = @{ prompt = "Say hello in one short sentence." } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri http://localhost:3001/api/infer -ContentType "application/json" -Body $body
+```
+
+Open the browser submit view from PowerShell:
+
+```powershell
+Start-Process "http://localhost:3001/llm-submit"
 ```
 
 ### Environment variables (LLM server)
@@ -130,7 +146,7 @@ Set these in `llm-server/.env` if needed:
 - `PORT_RETRY_COUNT` (default: `10`)
 	- Default is `10` in code, so if `3001` is busy it will try `3002`, `3003`, and so on.
 
-The local `.env` currently sets `OLLAMA_TIMEOUT_MS=60000` and `PORT_RETRY_COUNT=0`. With the current timeout policy, server timeout still resolves to at least 3 minutes unless you explicitly lower `MIN_REQUEST_TIMEOUT_MS`.
+If you set `OLLAMA_TIMEOUT_MS` lower than `MIN_REQUEST_TIMEOUT_MS`, the effective timeout still resolves to at least `MIN_REQUEST_TIMEOUT_MS`.
 
 PowerShell's `-TimeoutSec` controls how long its HTTP call waits; this is separate from server-side model timeout.
 
@@ -159,14 +175,35 @@ Browser-first submission flow:
 
 - `/llm-submit`
 	- Submit prompts directly from the browser.
-	- Shows the accepted prompt and its unique live-response link immediately.
-	- Keeps a refreshable list of recent jobs so responses remain easy to recover.
+	- Shows the accepted prompt and a live response link immediately.
+	- Shows a recent prompt list with status pills and links to each job page.
+	- Includes a manual Refresh button for recent jobs.
 	- Active jobs refresh automatically while the model is queued or thinking.
 
 Find every queued/completed/timed-out job in one place:
 
 ```powershell
 Invoke-RestMethod -Method Get -Uri http://localhost:3001/api/jobs
+```
+
+## PowerShell workflow (recommended)
+
+1. Install dependencies:
+
+```powershell
+npm install
+```
+
+2. Start the server:
+
+```powershell
+npm run start
+```
+
+3. Open the submit page:
+
+```powershell
+Start-Process "http://localhost:3001/llm-submit"
 ```
 
 ## Example prompts
@@ -217,7 +254,7 @@ foreach ($p in $prompts) {
 
 This project uses Jest. The suite covers to-do behavior, prompt result-page rendering and polling, plus server integration tests for validation, request numbering, completed responses, timeout limits, and timed-out jobs.
 
-```bash
+```powershell
 npm test
 ```
 
@@ -227,6 +264,11 @@ npm test
 - `style.css` - App styles
 - `script.js` - App logic
 - `script.test.js` - Jest tests
+- `llm-submit.html` - Browser prompt submission view
+- `llm-submit.js` - Browser prompt submission logic and recent job list
+- `llm-submit.test.js` - Browser submit-page behavior tests
+- `llm-job.html` - Prompt response tracking page
+- `llm-job.js` - Prompt response polling/render logic
 - `llm-job.test.js` - Prompt result-page rendering and polling tests
 - `llm-server.test.js` - LLM API integration and timeout tests using a fake local Ollama server
 - `package.json` - npm scripts and dev dependencies
