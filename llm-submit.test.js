@@ -45,6 +45,20 @@ async function flushAsync() {
   await Promise.resolve();
 }
 
+async function waitForAssertion(assertion, attempts = 25) {
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      assertion();
+      return;
+    } catch (error) {
+      if (i === attempts - 1) {
+        throw error;
+      }
+      await Promise.resolve();
+    }
+  }
+}
+
 describe('llm submit page', () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -79,10 +93,12 @@ describe('llm submit page', () => {
     loadSubmitPage(fetchMock);
     submitPrompt('Write a short poem.');
     await flushAsync();
+    await waitForAssertion(() => {
+      expect(document.getElementById('submit-status').textContent).toBe('Answer ready.');
+    });
 
     const postCall = fetchMock.mock.calls.find(([url]) => url === '/api/infer');
     expect(JSON.parse(postCall[1].body)).toEqual({ prompt: 'Write a short poem.' });
-    expect(document.getElementById('submit-status').textContent).toBe('Answer ready.');
     expect(document.getElementById('submit-result').hidden).toBe(false);
     expect(document.getElementById('active-prompt').textContent).toBe('Write a short poem.');
     expect(document.getElementById('active-request-heading').textContent).toBe('Answer ready');
