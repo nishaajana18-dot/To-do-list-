@@ -101,7 +101,7 @@ test('serves browser submit page with absolute asset paths', async () => {
 
   expect(response.status).toBe(200);
   expect(html).toContain('href="/style.css?v=10"');
-  expect(html).toContain('src="/llm-submit.js?v=9"');
+  expect(html).toContain('src="/llm-submit.js?v=10"');
 });
 
 test('rejects missing prompts and malformed JSON', async () => {
