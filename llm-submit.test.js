@@ -45,13 +45,16 @@ async function flushAsync() {
   await Promise.resolve();
 }
 
-async function waitForAssertion(assertion, attempts = 25) {
-  for (let i = 0; i < attempts; i += 1) {
+/**
+ * Retry an assertion over microtasks until it passes or reaches the attempt limit.
+ */
+async function waitForAssertion(assertionFn, maxAttempts = 25) {
+  for (let i = 0; i < maxAttempts; i += 1) {
     try {
-      assertion();
+      assertionFn();
       return;
     } catch (error) {
-      if (i === attempts - 1) {
+      if (i === maxAttempts - 1) {
         throw error;
       }
       await Promise.resolve();
@@ -93,6 +96,7 @@ describe('llm submit page', () => {
     loadSubmitPage(fetchMock);
     submitPrompt('Write a short poem.');
     await flushAsync();
+    expect(document.getElementById('submit-status').textContent).toBe('Prompt accepted. Waiting for the model...');
     await waitForAssertion(() => {
       expect(document.getElementById('submit-status').textContent).toBe('Answer ready.');
     });
