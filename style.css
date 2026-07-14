@@ -593,6 +593,90 @@ body.llm-shell {
   text-transform: uppercase;
 }
 
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Queue inspector */
+.queue-heading {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+  padding: 58px 0 34px;
+}
+
+.queue-heading h1 {
+  font-size: clamp(3rem, 6vw, 5.8rem);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 0.95;
+  margin: 0;
+}
+
+.queue-heading p {
+  color: var(--muted);
+  font-family: 'Courier New', monospace;
+  font-size: 0.76rem;
+  margin: 18px 0 0;
+}
+
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.queue-row {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 22px;
+  grid-template-columns: minmax(175px, 0.35fr) minmax(260px, 1fr) auto;
+  padding: 18px 20px;
+}
+
+.queue-state {
+  border: 1px solid currentColor;
+  border-radius: 20px;
+  color: #d5bc65;
+  font-family: 'Courier New', monospace;
+  font-size: 0.68rem;
+  justify-self: start;
+  padding: 6px 9px;
+  text-transform: uppercase;
+}
+
+.queue-state.processing { color: #8ec4ff; }
+.queue-state.completed { color: #62c98d; }
+.queue-state.timed_out,
+.queue-state.failed { color: #ff7f7f; }
+
+.queue-prompt {
+  min-width: 0;
+}
+
+.queue-prompt p {
+  line-height: 1.45;
+  margin: 0 0 7px;
+  overflow-wrap: anywhere;
+}
+
+.queue-prompt span {
+  color: var(--muted);
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+}
+
+.queue-row > a {
+  color: #8ec4ff;
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+}
+
 .recent-jobs {
   display: grid;
   gap: 1px;
@@ -786,4 +870,7 @@ body.llm-shell {
   .response-hero { align-items: flex-start; flex-direction: column; gap: 26px; }
   .response-panel { margin-top: -1px; min-height: auto; }
   .prompt-panel { margin-top: 24px; }
+  .queue-heading { align-items: flex-start; flex-direction: column; gap: 24px; }
+  .queue-row { align-items: start; gap: 13px; grid-template-columns: 1fr auto; }
+  .queue-state { grid-column: 1 / -1; }
 }

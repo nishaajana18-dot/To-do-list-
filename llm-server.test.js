@@ -91,7 +91,7 @@ test('serves nested result pages with absolute asset paths', async () => {
   const html = await response.text();
 
   expect(response.status).toBe(200);
-  expect(html).toContain('href="/style.css?v=10"');
+  expect(html).toContain('href="/style.css?v=13"');
   expect(html).toContain('src="/llm-job.js?v=9"');
 });
 
@@ -100,10 +100,20 @@ test('serves the browser submit page and supports direct-file entry', async () =
   const html = await response.text();
 
   expect(response.status).toBe(200);
-  expect(html).toContain('href="./style.css?v=12"');
+  expect(html).toContain('href="./style.css?v=13"');
   expect(html).toContain('src="./llm-submit.js?v=12"');
   expect(html).toContain("window.location.protocol === 'file:'");
   expect(html).toContain("window.location.replace('http://localhost:3001/llm-submit')");
+});
+
+test('serves the queue inspector page', async () => {
+  const response = await fetch(`${apiBaseUrl}/llm-queue`);
+  const html = await response.text();
+
+  expect(response.status).toBe(200);
+  expect(html).toContain('href="./style.css?v=13"');
+  expect(html).toContain('src="./llm-queue.js?v=1"');
+  expect(html).toContain('id="queue-list"');
 });
 
 test('rejects missing prompts and malformed JSON', async () => {

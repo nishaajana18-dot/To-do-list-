@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Queue - Local AI</title>
+  <script>
+    if (window.location.protocol === 'file:') {
+      window.location.replace('http://localhost:3001/llm-queue');
+    }
+  </script>
+  <link rel="stylesheet" href="./style.css?v=13">
+</head>
+<body class="llm-shell">
+  <main id="llm-queue-app" class="llm-page queue-page">
+    <header class="llm-header">
+      <a class="llm-brand" href="/llm-submit" aria-label="Local AI home">Local AI</a>
+      <a class="new-prompt-link" href="/llm-submit">New prompt</a>
+    </header>
+
+    <section class="queue-heading">
+      <div>
+        <h1>Queue</h1>
+        <p id="queue-summary">Loading...</p>
+      </div>
+      <button id="refresh-queue-btn" class="refresh-button" type="button">Refresh</button>
+    </section>
+
+    <section id="queue-status" class="submit-notice" aria-live="polite">Loading queue...</section>
+    <section id="queue-list" class="queue-list" aria-live="polite">
+      <p class="empty-state">Loading prompts...</p>
+    </section>
+  </main>
+
+  <script src="./llm-queue.js?v=1"></script>
+</body>
+</html>

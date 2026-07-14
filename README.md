@@ -38,6 +38,7 @@ The server will:
 - Serve API information at `http://localhost:3001/api`
 - Serve the to-do app at `http://localhost:3001/index.html`
 - Serve a browser submit view at `http://localhost:3001/llm-submit`
+- Serve a live queue inspector at `http://localhost:3001/llm-queue`
 - Expose LLM API endpoints under `/api`
 
 The root URL redirects to `/api`; it does not open the to-do app.
@@ -179,6 +180,12 @@ Browser-first submission flow:
 	- Shows a recent prompt list with status pills and links to each job page.
 	- Includes a manual Refresh button for recent jobs.
 	- Active jobs refresh automatically while the model is queued or thinking.
+
+Queue inspector:
+
+- `/llm-queue`
+	- Lists every tracked prompt and links to its response page.
+	- Refreshes automatically and shows Waiting in Queue, Waiting for model response, Timeout, Error, or Done.
 
 Find every queued/completed/timed-out job in one place:
 
