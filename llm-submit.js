@@ -1,6 +1,5 @@
 const submitForm = document.getElementById('llm-submit-form');
 const promptInput = document.getElementById('prompt-input');
-const timeoutInput = document.getElementById('timeout-input');
 const submitButton = document.getElementById('submit-prompt-btn');
 const statusBox = document.getElementById('submit-status');
 const resultSection = document.getElementById('submit-result');
@@ -13,15 +12,8 @@ function setStatus(text, type) {
   statusBox.textContent = text;
 }
 
-function buildRequestBody(prompt, timeoutValue) {
-  const body = { prompt };
-  const timeoutMs = Number(timeoutValue);
-
-  if (Number.isInteger(timeoutMs) && timeoutMs > 0) {
-    body.timeoutMs = timeoutMs;
-  }
-
-  return body;
+function buildRequestBody(prompt) {
+  return { prompt };
 }
 
 function renderAcceptedJob(payload) {
@@ -50,7 +42,7 @@ async function submitPrompt(event) {
     return;
   }
 
-  const requestBody = buildRequestBody(prompt, timeoutInput.value);
+  const requestBody = buildRequestBody(prompt);
 
   submitButton.disabled = true;
   setStatus('Submitting prompt...', 'processing');
@@ -72,9 +64,15 @@ async function submitPrompt(event) {
       return;
     }
 
-    setStatus('Prompt queued. You can submit another one right away.', 'queued');
+    setStatus('Prompt queued. Opening response page...', 'queued');
     renderAcceptedJob(payload);
     promptInput.value = '';
+
+    if (payload.resultPage) {
+      setTimeout(() => {
+        window.location.href = payload.resultPage;
+      }, 400);
+    }
   } catch (error) {
     setStatus(`Network error: ${error.message}`, 'failed');
   } finally {

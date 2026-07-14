@@ -35,9 +35,14 @@ app.get("/", (req, res) => {
 // Run `ollama list` in PowerShell to see your exact model name.
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen3:8b";
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434/api/generate";
-// Default processing limit is 60 seconds; callers may request up to five minutes.
-const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS) || 60000;
-const MAX_REQUEST_TIMEOUT_MS = Number(process.env.MAX_REQUEST_TIMEOUT_MS) || 300000;
+// Timeout is controlled by the server, not by per-request payloads.
+// Default is at least 3 minutes, with optional env-based clamping.
+const MIN_REQUEST_TIMEOUT_MS = parsePositiveInt(process.env.MIN_REQUEST_TIMEOUT_MS, 180000);
+const MAX_REQUEST_TIMEOUT_MS = Math.max(
+  MIN_REQUEST_TIMEOUT_MS,
+  parsePositiveInt(process.env.MAX_REQUEST_TIMEOUT_MS, 300000)
+);
+const OLLAMA_TIMEOUT_MS = parsePositiveInt(process.env.OLLAMA_TIMEOUT_MS, 180000);
 // If true, Ollama may include model "thinking" traces depending on model support.
 const OLLAMA_THINK = (process.env.OLLAMA_THINK || "false").toLowerCase() === "true";
 
@@ -187,20 +192,15 @@ function processInferQueue() {
   }
 }
 
-function resolveRequestTimeoutMs(requestedTimeoutMs) {
-  // Invalid/missing values use the default; large values are clamped safely.
-  const parsed = Number(requestedTimeoutMs);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    return OLLAMA_TIMEOUT_MS;
-  }
-
-  return Math.min(parsed, MAX_REQUEST_TIMEOUT_MS);
+function resolveServerTimeoutMs() {
+  // Timeout is service policy. Client-provided values are intentionally ignored.
+  return Math.min(Math.max(OLLAMA_TIMEOUT_MS, MIN_REQUEST_TIMEOUT_MS), MAX_REQUEST_TIMEOUT_MS);
 }
 
 async function queryOllama(prompt, timeoutMs) {
   // Abort slow upstream calls so a model request cannot hang indefinitely.
   const controller = new AbortController();
-  const effectiveTimeoutMs = resolveRequestTimeoutMs(timeoutMs);
+  const effectiveTimeoutMs = timeoutMs;
   const timeoutId = setTimeout(() => controller.abort(), effectiveTimeoutMs);
 
   let response;
@@ -250,9 +250,14 @@ app.get("/api", (req, res) => {
       "GET /api/jobs": "List all tracked jobs and their unique URLs",
       "GET /api/queue": "Get inference queue status"
     },
+    timeoutPolicy: {
+      configuredMs: resolveServerTimeoutMs(),
+      minMs: MIN_REQUEST_TIMEOUT_MS,
+      maxMs: MAX_REQUEST_TIMEOUT_MS,
+      clientOverrideAllowed: false
+    },
     exampleBody: {
-      prompt: "Explain quantum computing in one sentence.",
-      timeoutMs: 45000
+      prompt: "Explain quantum computing in one sentence."
     }
   });
 });
@@ -306,7 +311,7 @@ app.get("/api/infer/:jobId", (req, res) => {
 // This is the LLM side: it validates the prompt and forwards it to Ollama.
 async function handleInfer(req, res) {
   const prompt = req.body.prompt;
-  const timeoutMs = resolveRequestTimeoutMs(req.body.timeoutMs);
+  const timeoutMs = resolveServerTimeoutMs();
 
   if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
     return res.status(400).json({
@@ -356,8 +361,7 @@ app.get("/api/infer", (req, res) => {
     error: "Method not allowed",
     message: "Use POST /api/infer with a JSON body.",
     exampleBody: {
-      prompt: "Say hello in one short sentence.",
-      timeoutMs: 30000
+      prompt: "Say hello in one short sentence."
     }
   });
 });
@@ -368,8 +372,7 @@ app.get("/infer", (req, res) => {
     error: "Method not allowed",
     message: "Use POST /infer with a JSON body (or POST /api/infer).",
     exampleBody: {
-      prompt: "Say hello in one short sentence.",
-      timeoutMs: 30000
+      prompt: "Say hello in one short sentence."
     }
   });
 });
@@ -381,8 +384,7 @@ app.use((error, req, res, next) => {
     return res.status(400).json({
       error: "Invalid JSON in request body",
       example: {
-        prompt: "Say hello in one short sentence.",
-        timeoutMs: 30000
+        prompt: "Say hello in one short sentence."
       },
       powerShellTip:
         "Use Invoke-RestMethod with ConvertTo-Json, or curl.exe with --% to avoid quote-escaping issues in PowerShell."
@@ -408,6 +410,9 @@ function startServer(port, attemptsRemaining) {
     console.log(`Express server running at http://localhost:${port}`);
     console.log(`Using Ollama model: ${OLLAMA_MODEL}`);
     console.log(`Ollama think mode: ${OLLAMA_THINK}`);
+    console.log(
+      `Timeout policy: configured=${resolveServerTimeoutMs()}ms, min=${MIN_REQUEST_TIMEOUT_MS}ms, max=${MAX_REQUEST_TIMEOUT_MS}ms`
+    );
     console.log(
       `Inference queue: concurrency=${INFER_QUEUE_CONCURRENCY}, maxSize=${INFER_QUEUE_MAX_SIZE}, retentionMs=${INFER_JOB_RETENTION_MS}`
     );

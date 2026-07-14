@@ -67,6 +67,7 @@ beforeAll(async () => {
   const ollamaPort = await listen(ollamaServer);
   process.env.OLLAMA_URL = `http://127.0.0.1:${ollamaPort}/api/generate`;
   process.env.OLLAMA_TIMEOUT_MS = '40';
+  process.env.MIN_REQUEST_TIMEOUT_MS = '10';
   process.env.MAX_REQUEST_TIMEOUT_MS = '50';
 
   jest.resetModules();
@@ -81,6 +82,7 @@ afterAll(async () => {
   await close(ollamaServer);
   delete process.env.OLLAMA_URL;
   delete process.env.OLLAMA_TIMEOUT_MS;
+  delete process.env.MIN_REQUEST_TIMEOUT_MS;
   delete process.env.MAX_REQUEST_TIMEOUT_MS;
 });
 
@@ -98,8 +100,8 @@ test('serves browser submit page with absolute asset paths', async () => {
   const html = await response.text();
 
   expect(response.status).toBe(200);
-  expect(html).toContain('href="/style.css?v=5"');
-  expect(html).toContain('src="/llm-submit.js?v=5"');
+  expect(html).toContain('href="/style.css?v=6"');
+  expect(html).toContain('src="/llm-submit.js?v=6"');
 });
 
 test('rejects missing prompts and malformed JSON', async () => {
@@ -132,11 +134,11 @@ test('assigns sequential numbers and eventually returns responses', async () => 
   expect(secondResult.response).toBe('answer: second prompt');
 });
 
-test('caps requested timeouts at the configured maximum', async () => {
+test('uses server timeout policy even when clients request custom timeouts', async () => {
   const created = await postPrompt('capped prompt', 5000);
   const result = await waitForTerminal(created.body.jobId);
 
-  expect(created.body.timeoutMs).toBe(50);
+  expect(created.body.timeoutMs).toBe(40);
   expect(result.status).toBe('completed');
 });
 
@@ -144,8 +146,8 @@ test('marks model calls timed_out when their specific limit expires', async () =
   const created = await postPrompt('slow prompt', 10);
   const result = await waitForTerminal(created.body.jobId);
 
-  expect(created.body.timeoutMs).toBe(10);
+  expect(created.body.timeoutMs).toBe(40);
   expect(result.status).toBe('timed_out');
-  expect(result.error).toContain('timed out after 10ms');
+  expect(result.error).toContain('timed out after 40ms');
   expect(result.response).toBeNull();
 });

@@ -5,7 +5,6 @@ function setupDom() {
     <main id="llm-submit-app" class="panel">
       <form id="llm-submit-form" class="prompt-form">
         <textarea id="prompt-input" rows="6" required></textarea>
-        <input type="number" id="timeout-input" value="60000">
         <button type="submit" id="submit-prompt-btn">Queue Prompt</button>
       </form>
       <section id="submit-status" class="job-status" aria-live="polite"></section>
@@ -25,9 +24,8 @@ function loadSubmitPage(fetchImpl = jest.fn()) {
   require('./llm-submit.js');
 }
 
-function submitPrompt(prompt, timeout = '60000') {
+function submitPrompt(prompt) {
   document.getElementById('prompt-input').value = prompt;
-  document.getElementById('timeout-input').value = timeout;
   document.getElementById('llm-submit-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 }
 
@@ -37,7 +35,12 @@ async function flushAsync() {
 }
 
 describe('llm submit page', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
   afterEach(() => {
+    jest.useRealTimers();
     jest.restoreAllMocks();
     document.body.innerHTML = '';
   });
@@ -56,20 +59,21 @@ describe('llm submit page', () => {
     });
 
     loadSubmitPage(fetchMock);
-    submitPrompt('Write a short poem.', '45000');
+    submitPrompt('Write a short poem.');
     await flushAsync();
+    jest.advanceTimersByTime(400);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/infer');
     expect(fetchMock.mock.calls[0][1].method).toBe('POST');
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
-      prompt: 'Write a short poem.',
-      timeoutMs: 45000
+      prompt: 'Write a short poem.'
     });
-    expect(document.getElementById('submit-status').textContent).toContain('Prompt queued');
+    expect(document.getElementById('submit-status').textContent).toContain('Opening response page');
     expect(document.getElementById('submit-result').hidden).toBe(false);
     expect(document.getElementById('result-link').getAttribute('href')).toBe('/llm-job/job-123');
     expect(document.getElementById('status-link').getAttribute('href')).toBe('/api/infer/job-123');
+    expect(window.location.pathname).toBe('/llm-job/job-123');
   });
 
   test('validates empty prompts before making a request', () => {

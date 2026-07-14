@@ -4,23 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Submit Prompt</title>
-  <link rel="stylesheet" href="/style.css?v=5">
+  <link rel="stylesheet" href="/style.css?v=6">
 </head>
 <body>
   <main id="llm-submit-app" class="panel">
     <h1>Submit Prompt</h1>
-    <p class="panel-intro">Queue prompts directly from the browser. Each prompt gets a unique result page you can open immediately.</p>
+    <p class="panel-intro">Queue prompts directly from the browser. The server controls timeout with a minimum of three minutes.</p>
 
     <form id="llm-submit-form" class="prompt-form">
       <label for="prompt-input">Prompt</label>
       <textarea id="prompt-input" rows="6" placeholder="Ask the model something concise..." required></textarea>
 
       <div class="prompt-form-row">
-        <div class="prompt-field">
-          <label for="timeout-input">Timeout (ms)</label>
-          <input type="number" id="timeout-input" min="1" step="1000" value="60000" aria-describedby="timeout-help">
-          <small id="timeout-help">Optional. Server will clamp values above its max.</small>
-        </div>
         <button type="submit" id="submit-prompt-btn">Queue Prompt</button>
       </div>
     </form>
@@ -42,6 +37,6 @@
     </nav>
   </main>
 
-  <script src="/llm-submit.js?v=5"></script>
+  <script src="/llm-submit.js?v=6"></script>
 </body>
 </html>
