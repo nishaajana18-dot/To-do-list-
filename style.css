@@ -211,6 +211,61 @@ body {
   color: #8ec4ff;
 }
 
+.prompt-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prompt-form label {
+  font-weight: 700;
+}
+
+.prompt-form textarea,
+.prompt-form input[type="number"] {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #1f2a3c;
+  background-color: #0c1119;
+  color: #ffffff;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.prompt-form textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.prompt-form-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.prompt-field {
+  flex: 1 1 auto;
+}
+
+.prompt-field small {
+  color: #c9d4e5;
+}
+
+#submit-prompt-btn {
+  padding: 10px 16px;
+  background-color: #0a1f45;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#submit-prompt-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 @media (max-width: 680px) {
   body {
     height: auto;
@@ -230,5 +285,10 @@ body {
   .task-actions {
     position: static;
     margin-left: auto;
+  }
+
+  .prompt-form-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

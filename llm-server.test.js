@@ -93,6 +93,15 @@ test('serves nested result pages with absolute asset paths', async () => {
   expect(html).toContain('src="/llm-job.js?v=4"');
 });
 
+test('serves browser submit page with absolute asset paths', async () => {
+  const response = await fetch(`${apiBaseUrl}/llm-submit`);
+  const html = await response.text();
+
+  expect(response.status).toBe(200);
+  expect(html).toContain('href="/style.css?v=5"');
+  expect(html).toContain('src="/llm-submit.js?v=5"');
+});
+
 test('rejects missing prompts and malformed JSON', async () => {
   const missingPrompt = await fetch(`${apiBaseUrl}/api/infer`, {
     method: 'POST',

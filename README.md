@@ -37,6 +37,7 @@ The server will:
 
 - Serve API information at `http://localhost:3001/api`
 - Serve the to-do app at `http://localhost:3001/index.html`
+- Serve a browser submit view at `http://localhost:3001/llm-submit`
 - Expose LLM API endpoints under `/api`
 
 The root URL redirects to `/api`; it does not open the to-do app.
@@ -161,6 +162,12 @@ Result page still exists for tracking individual jobs, with a unique URL per pro
 - `/llm-job/<jobId>`
 	- Shows waiting/processing/completed/timed out/failed states.
 	- Polls every two seconds and displays the configured timeout and remaining processing time.
+
+Browser-first submission flow:
+
+- `/llm-submit`
+	- Submit prompts and optional `timeoutMs` directly from the browser.
+	- Immediately returns links to the unique result page (`/llm-job/<jobId>`) and status JSON (`/api/infer/<jobId>`).
 
 Find every queued/completed/timed-out job in one place:
 

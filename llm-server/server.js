@@ -23,6 +23,9 @@ app.use(express.static(WEB_ROOT, { index: false }));
 app.get("/llm-job/:jobId", (req, res) => {
   res.sendFile(path.join(WEB_ROOT, "llm-job.html"));
 });
+app.get("/llm-submit", (req, res) => {
+  res.sendFile(path.join(WEB_ROOT, "llm-submit.html"));
+});
 // Keep the root focused on LLM API metadata; to-do app remains at /index.html.
 app.get("/", (req, res) => {
   res.redirect("/api");
