@@ -91,7 +91,7 @@ test('serves nested result pages with absolute asset paths', async () => {
   const html = await response.text();
 
   expect(response.status).toBe(200);
-  expect(html).toContain('href="/style.css?v=9"');
+  expect(html).toContain('href="/style.css?v=10"');
   expect(html).toContain('src="/llm-job.js?v=9"');
 });
 
@@ -100,7 +100,7 @@ test('serves browser submit page with absolute asset paths', async () => {
   const html = await response.text();
 
   expect(response.status).toBe(200);
-  expect(html).toContain('href="/style.css?v=9"');
+  expect(html).toContain('href="/style.css?v=10"');
   expect(html).toContain('src="/llm-submit.js?v=9"');
 });
 

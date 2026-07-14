@@ -3,37 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prompt Desk</title>
-  <link rel="stylesheet" href="/style.css?v=9">
+  <title>Local AI</title>
+  <link rel="stylesheet" href="/style.css?v=10">
 </head>
 <body class="llm-shell">
   <main id="llm-submit-app" class="llm-page">
     <header class="llm-header">
-      <a class="llm-brand" href="/llm-submit" aria-label="Prompt Desk home">
-        <span class="brand-mark" aria-hidden="true">P</span>
-        <span>Prompt Desk</span>
+      <a class="llm-brand" href="/llm-submit" aria-label="Local AI home">
+        <span>Local AI</span>
       </a>
-      <div class="server-indicator"><span></span> Local model queue</div>
     </header>
 
     <section class="submit-hero">
       <div class="hero-copy">
-        <p class="eyebrow">Browser workspace</p>
-        <h1>Ask once.<br>Keep the thread.</h1>
-        <p>Submit a prompt, follow its live status, and return to any recent response from one place.</p>
+        <h1>Ask the model</h1>
       </div>
 
       <form id="llm-submit-form" class="prompt-composer">
         <div class="composer-label">
           <label for="prompt-input">Your prompt</label>
-          <span id="character-count">0 characters</span>
         </div>
-        <textarea id="prompt-input" rows="8" maxlength="12000" placeholder="What would you like the model to work on?" required></textarea>
+        <textarea id="prompt-input" rows="8" placeholder="What would you like the model to work on?" required></textarea>
         <div class="composer-footer">
-          <span>Responses continue processing if you leave this page.</span>
           <button type="submit" id="submit-prompt-btn">
             <span>Submit prompt</span>
-            <span aria-hidden="true">&#8594;</span>
           </button>
         </div>
       </form>
@@ -43,21 +36,18 @@
 
     <section id="submit-result" class="active-request" aria-labelledby="active-request-heading" hidden>
       <div class="active-request-copy">
-        <p class="eyebrow">Latest request</p>
         <h2 id="active-request-heading">Prompt accepted</h2>
         <p id="active-prompt" class="active-prompt"></p>
         <p id="submit-result-details" class="request-meta"></p>
       </div>
       <div class="active-request-actions">
-        <a id="result-link" class="primary-link" href="#">View live response <span aria-hidden="true">&#8594;</span></a>
-        <a id="status-link" class="quiet-link" href="#">Open raw status</a>
+        <a id="result-link" class="primary-link" href="#">View response</a>
       </div>
     </section>
 
     <section class="recent-section" aria-labelledby="recent-heading">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">Response history</p>
           <h2 id="recent-heading">Recent prompts</h2>
         </div>
         <button id="refresh-jobs-btn" class="refresh-button" type="button">Refresh</button>
@@ -67,10 +57,6 @@
       </div>
     </section>
 
-    <footer class="llm-footer">
-      <a href="/api">API details</a>
-      <a href="/index.html">To-do list</a>
-    </footer>
   </main>
 
   <script src="/llm-submit.js?v=9"></script>

@@ -1,13 +1,11 @@
 const submitForm = document.getElementById('llm-submit-form');
 const promptInput = document.getElementById('prompt-input');
 const submitButton = document.getElementById('submit-prompt-btn');
-const characterCount = document.getElementById('character-count');
 const statusBox = document.getElementById('submit-status');
 const resultSection = document.getElementById('submit-result');
 const resultDetails = document.getElementById('submit-result-details');
 const activePrompt = document.getElementById('active-prompt');
 const resultLink = document.getElementById('result-link');
-const statusLink = document.getElementById('status-link');
 const recentJobs = document.getElementById('recent-jobs');
 const refreshJobsButton = document.getElementById('refresh-jobs-btn');
 
@@ -48,13 +46,11 @@ function formatDate(timestamp) {
 
 function renderAcceptedJob(payload, prompt) {
   const resultUrl = payload.statusPageUrl || payload.resultPage || '#';
-  const apiStatusUrl = payload.statusApiUrl || payload.statusUrl || '#';
 
   resultSection.hidden = false;
   activePrompt.textContent = prompt;
   resultDetails.textContent = `Prompt #${payload.requestNumber ?? 'pending'} · ${formatStatus('queued')} · ${formatDate(Date.now())}`;
   resultLink.href = resultUrl;
-  statusLink.href = apiStatusUrl;
   resultSection.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -163,7 +159,6 @@ async function submitPrompt(event) {
     renderAcceptedJob(payload, prompt);
     setStatus('Prompt accepted. Use the live response link below while the model works.', 'queued');
     promptInput.value = '';
-    characterCount.textContent = '0 characters';
     await loadRecentJobs();
   } catch (error) {
     setStatus(`Could not reach the server: ${error.message}`, 'failed');
@@ -172,10 +167,6 @@ async function submitPrompt(event) {
   }
 }
 
-promptInput.addEventListener('input', () => {
-  const count = promptInput.value.length;
-  characterCount.textContent = `${count} character${count === 1 ? '' : 's'}`;
-});
 submitForm.addEventListener('submit', submitPrompt);
 refreshJobsButton.addEventListener('click', loadRecentJobs);
 loadRecentJobs();

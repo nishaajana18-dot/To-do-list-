@@ -5,7 +5,6 @@ function setupDom() {
     <main id="llm-submit-app">
       <form id="llm-submit-form">
         <textarea id="prompt-input" required></textarea>
-        <span id="character-count">0 characters</span>
         <button type="submit" id="submit-prompt-btn">Submit prompt</button>
       </form>
       <section id="submit-status"></section>
@@ -13,7 +12,6 @@ function setupDom() {
         <p id="active-prompt"></p>
         <p id="submit-result-details"></p>
         <a id="result-link" href="#">View live response</a>
-        <a id="status-link" href="#">Open raw status</a>
       </section>
       <button id="refresh-jobs-btn" type="button">Refresh</button>
       <div id="recent-jobs"></div>
@@ -74,7 +72,6 @@ describe('llm submit page', () => {
     expect(document.getElementById('submit-result').hidden).toBe(false);
     expect(document.getElementById('active-prompt').textContent).toBe('Write a short poem.');
     expect(document.getElementById('result-link').href).toBe('http://localhost:3001/llm-job/job-123');
-    expect(document.getElementById('status-link').href).toBe('http://localhost:3001/api/infer/job-123');
   });
 
   test('loads recent prompts with links to their response pages', async () => {
