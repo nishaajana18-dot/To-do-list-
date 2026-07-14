@@ -7,9 +7,11 @@ const jobId = jobIdFromPath || params.get('id');
 
 const jobIdLabel = document.getElementById('job-id-label');
 const jobStatus = document.getElementById('job-status');
+const jobStatusText = document.getElementById('job-status-text') || jobStatus;
 const jobPrompt = document.getElementById('job-prompt');
 const jobResponse = document.getElementById('job-response');
 const jobQueue = document.getElementById('job-queue');
+const refreshJobButton = document.getElementById('refresh-job-btn');
 
 let pollTimer = null;
 // Polling is intentionally lightweight; the server remains the source of truth.
@@ -53,8 +55,8 @@ function renderQueueSnapshot(data) {
 }
 
 function setStatus(text, type) {
-  jobStatus.className = `job-status ${type}`;
-  jobStatus.textContent = text;
+  jobStatus.className = `response-status ${type}`;
+  jobStatusText.textContent = text;
 }
 
 function stopPolling() {
@@ -78,6 +80,7 @@ function renderJob(data) {
   if (data.status === 'queued') {
     jobResponse.textContent = 'Response\nWaiting in queue...';
     setStatus(`Prompt ${data.requestNumber ?? ''} is waiting in queue before the model starts thinking.`.trim(), 'queued');
+    document.title = `Prompt #${data.requestNumber ?? ''} · Waiting`;
     scheduleNextPoll();
     return;
   }
@@ -88,6 +91,7 @@ function renderJob(data) {
     const remainingMs = data.timeoutMs ? Math.max(0, data.timeoutMs - elapsedMs) : null;
     const timeoutText = remainingMs === null ? '' : ` Timeout in ${formatDuration(remainingMs)}.`;
     setStatus(`Model is still thinking for prompt ${data.requestNumber ?? ''}.${timeoutText}`.trim(), 'processing');
+    document.title = `Prompt #${data.requestNumber ?? ''} · Thinking`;
     scheduleNextPoll();
     return;
   }
@@ -95,6 +99,7 @@ function renderJob(data) {
   if (data.status === 'completed') {
     jobResponse.textContent = data.response ? `Response\n${data.response}` : 'Response\nNo text was returned.';
     setStatus('Response ready.', 'completed');
+    document.title = `Prompt #${data.requestNumber ?? ''} · Answer ready`;
     stopPolling();
     return;
   }
@@ -102,12 +107,14 @@ function renderJob(data) {
   if (data.status === 'timed_out') {
     jobResponse.textContent = `Response\n${data.error || 'The request timed out.'}`;
     setStatus(`Request timed out after ${formatDuration(data.timeoutMs)}.`, 'timed_out');
+    document.title = `Prompt #${data.requestNumber ?? ''} · Timed out`;
     stopPolling();
     return;
   }
 
   jobResponse.textContent = `Response\n${data.error || 'Request failed.'}`;
   setStatus('Request failed.', 'failed');
+  document.title = `Prompt #${data.requestNumber ?? ''} · Failed`;
   stopPolling();
 }
 
@@ -154,6 +161,8 @@ if (!jobId) {
   setStatus('Loading job status...', 'processing');
   loadJob();
 }
+
+refreshJobButton?.addEventListener('click', loadJob);
 
 window.__llmJob = {
   formatDuration,

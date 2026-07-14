@@ -294,3 +294,456 @@ body {
     align-items: stretch;
   }
 }
+
+/* Prompt Desk */
+body.llm-shell {
+  --ink: #19211c;
+  --paper: #f3efe4;
+  --paper-deep: #e8e1d1;
+  --line: #cfc5b2;
+  --accent: #e9502f;
+  --accent-dark: #b9331a;
+  --forest: #244d3b;
+  align-items: stretch;
+  background:
+    radial-gradient(circle at 10% 5%, rgba(233, 80, 47, 0.14), transparent 25rem),
+    linear-gradient(rgba(25, 33, 28, 0.035) 1px, transparent 1px),
+    var(--paper);
+  background-size: auto, 100% 28px, auto;
+  color: var(--ink);
+  display: block;
+  font-family: Georgia, 'Times New Roman', serif;
+  height: auto;
+  min-height: 100vh;
+}
+
+.llm-page {
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: 0 36px 40px;
+}
+
+.llm-header {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  min-height: 84px;
+}
+
+.llm-brand {
+  align-items: center;
+  color: var(--ink);
+  display: inline-flex;
+  font-size: 1.05rem;
+  font-weight: 700;
+  gap: 11px;
+  text-decoration: none;
+}
+
+.brand-mark {
+  align-items: center;
+  background: var(--ink);
+  border-radius: 50%;
+  color: var(--paper);
+  display: inline-flex;
+  font-family: 'Courier New', monospace;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.server-indicator {
+  color: #596158;
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.server-indicator span {
+  background: #3f8d59;
+  border-radius: 50%;
+  display: inline-block;
+  height: 8px;
+  margin-right: 7px;
+  width: 8px;
+}
+
+.submit-hero {
+  display: grid;
+  gap: clamp(32px, 7vw, 92px);
+  grid-template-columns: minmax(250px, 0.75fr) minmax(440px, 1.25fr);
+  padding: 72px 0 54px;
+}
+
+.eyebrow,
+.panel-label {
+  color: var(--accent-dark);
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  margin: 0 0 14px;
+  text-transform: uppercase;
+}
+
+.hero-copy h1,
+.response-hero h1 {
+  font-size: clamp(3rem, 6.6vw, 6.2rem);
+  font-weight: 400;
+  letter-spacing: -0.065em;
+  line-height: 0.89;
+  margin: 0;
+}
+
+.hero-copy > p:last-child {
+  color: #555d56;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  margin: 28px 0 0;
+  max-width: 36ch;
+}
+
+.prompt-composer {
+  background: #fffdf6;
+  border: 1px solid var(--line);
+  box-shadow: 12px 12px 0 var(--paper-deep);
+  padding: 28px;
+}
+
+.composer-label,
+.composer-footer,
+.section-heading,
+.job-card-top,
+.job-card-bottom {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.composer-label label {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.composer-label span,
+.composer-footer > span,
+.request-meta,
+.job-card-bottom {
+  color: #6b716c;
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+}
+
+.prompt-composer textarea {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  box-sizing: border-box;
+  color: var(--ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.25rem;
+  line-height: 1.6;
+  margin: 18px 0;
+  min-height: 220px;
+  outline: 0;
+  padding: 22px 2px;
+  resize: vertical;
+  width: 100%;
+}
+
+.prompt-composer textarea:focus {
+  border-color: var(--accent);
+}
+
+#submit-prompt-btn,
+.primary-link {
+  align-items: center;
+  background: var(--accent);
+  border: 0;
+  border-radius: 0;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  font-family: 'Courier New', monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  gap: 18px;
+  padding: 14px 18px;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+#submit-prompt-btn:hover,
+.primary-link:hover {
+  background: var(--accent-dark);
+}
+
+.submit-notice {
+  border-left: 4px solid var(--ink);
+  font-family: 'Courier New', monospace;
+  font-size: 0.82rem;
+  margin-bottom: 28px;
+  padding: 12px 16px;
+}
+
+.submit-notice.queued,
+.submit-notice.completed {
+  border-color: var(--forest);
+}
+
+.submit-notice.failed,
+.submit-notice.timed_out {
+  border-color: var(--accent);
+}
+
+.active-request {
+  align-items: center;
+  background: var(--ink);
+  color: var(--paper);
+  display: grid;
+  gap: 32px;
+  grid-template-columns: 1fr auto;
+  margin-bottom: 72px;
+  padding: 30px;
+}
+
+.active-request h2,
+.recent-section h2 {
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  font-weight: 400;
+  margin: 0;
+}
+
+.active-prompt {
+  line-height: 1.5;
+  margin: 18px 0 12px;
+  max-width: 70ch;
+}
+
+.active-request .request-meta {
+  color: #abb2ac;
+  margin: 0;
+}
+
+.active-request-actions {
+  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quiet-link {
+  color: #ced3cf;
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.recent-section {
+  border-top: 1px solid var(--line);
+  padding-top: 34px;
+}
+
+.refresh-button,
+.new-prompt-link {
+  background: transparent;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  padding: 10px 13px;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.recent-jobs {
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 30px;
+}
+
+.job-card {
+  background: rgba(255, 253, 246, 0.72);
+  border: 1px solid var(--line);
+  margin: 0 -1px -1px 0;
+  min-height: 150px;
+  padding: 22px;
+}
+
+.job-number {
+  color: #777d77;
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+}
+
+.status-pill {
+  border: 1px solid currentColor;
+  border-radius: 20px;
+  color: #786d43;
+  font-family: 'Courier New', monospace;
+  font-size: 0.65rem;
+  padding: 5px 8px;
+  text-transform: uppercase;
+}
+
+.status-pill.completed { color: #2b7650; }
+.status-pill.failed,
+.status-pill.timed_out { color: var(--accent-dark); }
+.status-pill.processing { color: #2f6480; }
+
+.job-card-prompt {
+  display: -webkit-box;
+  font-size: 1.1rem;
+  line-height: 1.45;
+  margin: 22px 0 28px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.job-card-bottom a,
+.llm-footer a {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.empty-state {
+  border: 1px dashed var(--line);
+  color: #6b716c;
+  grid-column: 1 / -1;
+  padding: 28px;
+}
+
+.llm-footer {
+  border-top: 1px solid var(--line);
+  display: flex;
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  gap: 24px;
+  margin-top: 60px;
+  padding-top: 24px;
+  text-transform: uppercase;
+}
+
+/* Prompt response page */
+.response-hero {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+  padding: 62px 0 42px;
+}
+
+.response-hero h1 {
+  font-size: clamp(3rem, 6vw, 5.8rem);
+}
+
+.job-id-label {
+  color: #727871;
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  margin: 22px 0 0;
+  word-break: break-all;
+}
+
+.response-status {
+  align-items: center;
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  font-family: 'Courier New', monospace;
+  font-size: 0.82rem;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.status-orb {
+  background: #e8b83e;
+  border-radius: 50%;
+  box-shadow: 0 0 0 5px rgba(232, 184, 62, 0.17);
+  height: 10px;
+  width: 10px;
+}
+
+.response-status.processing .status-orb,
+.response-status.queued .status-orb {
+  animation: status-pulse 1.4s ease-in-out infinite;
+}
+
+.response-status.completed .status-orb { background: #55b879; }
+.response-status.failed .status-orb,
+.response-status.timed_out .status-orb { background: #ef6346; }
+
+@keyframes status-pulse {
+  50% { opacity: 0.4; transform: scale(0.78); }
+}
+
+.response-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.75fr) minmax(420px, 1.25fr);
+}
+
+.response-panel {
+  border: 1px solid var(--line);
+  margin: 28px -1px 0 0;
+  min-height: 300px;
+  padding: 28px;
+}
+
+.answer-panel {
+  background: #fffdf6;
+}
+
+.response-panel pre,
+.request-details pre {
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.04rem;
+  line-height: 1.7;
+  margin: 0;
+  padding: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.request-details {
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  padding: 18px 28px;
+}
+
+.request-details summary {
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.request-details pre {
+  font-family: 'Courier New', monospace;
+  font-size: 0.74rem;
+  margin-top: 18px;
+}
+
+@media (max-width: 780px) {
+  body.llm-shell { padding: 0; }
+  .llm-page { padding: 0 18px 30px; }
+  .submit-hero,
+  .response-grid { grid-template-columns: 1fr; }
+  .submit-hero { padding-top: 44px; }
+  .prompt-composer { box-shadow: 7px 7px 0 var(--paper-deep); padding: 20px; }
+  .composer-footer { align-items: stretch; flex-direction: column; gap: 18px; }
+  #submit-prompt-btn { justify-content: space-between; }
+  .active-request { grid-template-columns: 1fr; }
+  .recent-jobs { grid-template-columns: 1fr; }
+  .response-hero { align-items: flex-start; flex-direction: column; gap: 26px; }
+  .response-panel { margin-top: -1px; min-height: auto; }
+  .prompt-panel { margin-top: 24px; }
+}

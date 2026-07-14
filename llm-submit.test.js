@@ -2,22 +2,30 @@
 
 function setupDom() {
   document.body.innerHTML = `
-    <main id="llm-submit-app" class="panel">
-      <form id="llm-submit-form" class="prompt-form">
-        <textarea id="prompt-input" rows="6" required></textarea>
-        <button type="submit" id="submit-prompt-btn">Queue Prompt</button>
+    <main id="llm-submit-app">
+      <form id="llm-submit-form">
+        <textarea id="prompt-input" required></textarea>
+        <span id="character-count">0 characters</span>
+        <button type="submit" id="submit-prompt-btn">Submit prompt</button>
       </form>
-      <section id="submit-status" class="job-status" aria-live="polite"></section>
-      <section id="submit-result" class="job-block" hidden>
-        <pre id="submit-result-details"></pre>
-        <a id="result-link" href="#">Open result page</a>
-        <a id="status-link" href="#">Open JSON status</a>
+      <section id="submit-status"></section>
+      <section id="submit-result" hidden>
+        <p id="active-prompt"></p>
+        <p id="submit-result-details"></p>
+        <a id="result-link" href="#">View live response</a>
+        <a id="status-link" href="#">Open raw status</a>
       </section>
+      <button id="refresh-jobs-btn" type="button">Refresh</button>
+      <div id="recent-jobs"></div>
     </main>
   `;
 }
 
-function loadSubmitPage(fetchImpl = jest.fn()) {
+function response(body, ok = true) {
+  return Promise.resolve({ ok, json: async () => body });
+}
+
+function loadSubmitPage(fetchImpl) {
   jest.resetModules();
   setupDom();
   window.fetch = fetchImpl;
@@ -32,74 +40,81 @@ function submitPrompt(prompt) {
 async function flushAsync() {
   await Promise.resolve();
   await Promise.resolve();
+  await Promise.resolve();
 }
 
 describe('llm submit page', () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
   afterEach(() => {
-    jest.useRealTimers();
     jest.restoreAllMocks();
-    delete window.__llmNavigateTo;
     document.body.innerHTML = '';
   });
 
-  test('submits prompt, renders job links, and redirects to the live status page', async () => {
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        jobId: 'job-123',
-        requestNumber: 3,
-        timeoutMs: 45000,
-        resultPage: '/llm-job/job-123',
-        statusPageUrl: 'http://localhost:3001/llm-job/job-123',
-        statusUrl: '/api/infer/job-123',
-        statusApiUrl: 'http://localhost:3001/api/infer/job-123',
-        queue: { queued: 1, active: 1 }
-      })
+  test('keeps an accepted prompt and its live response link visible', async () => {
+    const fetchMock = jest.fn((url, options) => {
+      if (url === '/api/infer' && options?.method === 'POST') {
+        return response({
+          jobId: 'job-123',
+          requestNumber: 3,
+          resultPage: '/llm-job/job-123',
+          statusPageUrl: 'http://localhost:3001/llm-job/job-123',
+          statusUrl: '/api/infer/job-123',
+          statusApiUrl: 'http://localhost:3001/api/infer/job-123'
+        });
+      }
+      return response({ jobs: [] });
     });
-    const assignMock = jest.fn();
-    window.__llmNavigateTo = assignMock;
 
     loadSubmitPage(fetchMock);
     submitPrompt('Write a short poem.');
     await flushAsync();
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/infer');
-    expect(fetchMock.mock.calls[0][1].method).toBe('POST');
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
-      prompt: 'Write a short poem.'
-    });
-    expect(document.getElementById('submit-status').textContent).toContain('Opening the live status page now');
+    const postCall = fetchMock.mock.calls.find(([url]) => url === '/api/infer');
+    expect(JSON.parse(postCall[1].body)).toEqual({ prompt: 'Write a short poem.' });
+    expect(document.getElementById('submit-status').textContent).toContain('Prompt accepted');
     expect(document.getElementById('submit-result').hidden).toBe(false);
-    expect(document.getElementById('submit-result-details').textContent).toContain('http://localhost:3001/llm-job/job-123');
-    expect(document.getElementById('result-link').getAttribute('href')).toBe('http://localhost:3001/llm-job/job-123');
-    expect(document.getElementById('status-link').getAttribute('href')).toBe('http://localhost:3001/api/infer/job-123');
-
-    jest.advanceTimersByTime(1200);
-    expect(assignMock).toHaveBeenCalledWith('http://localhost:3001/llm-job/job-123');
+    expect(document.getElementById('active-prompt').textContent).toBe('Write a short poem.');
+    expect(document.getElementById('result-link').href).toBe('http://localhost:3001/llm-job/job-123');
+    expect(document.getElementById('status-link').href).toBe('http://localhost:3001/api/infer/job-123');
   });
 
-  test('validates empty prompts before making a request', () => {
-    const fetchMock = jest.fn();
+  test('loads recent prompts with links to their response pages', async () => {
+    const fetchMock = jest.fn().mockImplementation(() => response({
+      jobs: [{
+        jobId: 'job-456',
+        requestNumber: 8,
+        prompt: 'Explain gravity.',
+        status: 'completed',
+        createdAt: Date.now(),
+        resultPage: '/llm-job/job-456'
+      }]
+    }));
 
     loadSubmitPage(fetchMock);
+    await flushAsync();
+
+    expect(document.getElementById('recent-jobs').textContent).toContain('Explain gravity.');
+    expect(document.getElementById('recent-jobs').textContent).toContain('Answer ready');
+    expect(document.querySelector('#recent-jobs a').getAttribute('href')).toBe('/llm-job/job-456');
+  });
+
+  test('validates empty prompts before posting a request', async () => {
+    const fetchMock = jest.fn().mockImplementation(() => response({ jobs: [] }));
+    loadSubmitPage(fetchMock);
+    await flushAsync();
+    fetchMock.mockClear();
+
     submitPrompt('   ');
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(document.getElementById('submit-status').textContent).toBe('Prompt is required.');
+    expect(document.getElementById('submit-status').textContent).toBe('Enter a prompt before submitting.');
   });
 
   test('shows request errors from the API', async () => {
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: false,
-      json: async () => ({
-        error: 'Inference queue is full',
-        details: 'Queue currently at max capacity.'
-      })
+    const fetchMock = jest.fn((url, options) => {
+      if (options?.method === 'POST') {
+        return response({ error: 'Inference queue is full', details: 'Queue currently at max capacity.' }, false);
+      }
+      return response({ jobs: [] });
     });
 
     loadSubmitPage(fetchMock);

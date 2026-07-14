@@ -159,7 +159,9 @@ Browser-first submission flow:
 
 - `/llm-submit`
 	- Submit prompts directly from the browser.
-	- Automatically opens the unique result page (`/llm-job/<jobId>`) after queueing.
+	- Shows the accepted prompt and its unique live-response link immediately.
+	- Keeps a refreshable list of recent jobs so responses remain easy to recover.
+	- Active jobs refresh automatically while the model is queued or thinking.
 
 Find every queued/completed/timed-out job in one place:
 
