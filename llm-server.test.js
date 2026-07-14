@@ -91,8 +91,8 @@ test('serves nested result pages with absolute asset paths', async () => {
   const html = await response.text();
 
   expect(response.status).toBe(200);
-  expect(html).toContain('href="/style.css?v=4"');
-  expect(html).toContain('src="/llm-job.js?v=4"');
+  expect(html).toContain('href="/style.css?v=8"');
+  expect(html).toContain('src="/llm-job.js?v=8"');
 });
 
 test('serves browser submit page with absolute asset paths', async () => {
@@ -100,8 +100,8 @@ test('serves browser submit page with absolute asset paths', async () => {
   const html = await response.text();
 
   expect(response.status).toBe(200);
-  expect(html).toContain('href="/style.css?v=7"');
-  expect(html).toContain('src="/llm-submit.js?v=7"');
+  expect(html).toContain('href="/style.css?v=8"');
+  expect(html).toContain('src="/llm-submit.js?v=8"');
 });
 
 test('rejects missing prompts and malformed JSON', async () => {
