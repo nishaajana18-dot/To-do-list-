@@ -6,6 +6,7 @@ const resultSection = document.getElementById('submit-result');
 const resultDetails = document.getElementById('submit-result-details');
 const resultLink = document.getElementById('result-link');
 const statusLink = document.getElementById('status-link');
+let redirectTimer = null;
 
 function setStatus(text, type) {
   statusBox.className = `job-status ${type}`;
@@ -18,6 +19,8 @@ function buildRequestBody(prompt) {
 
 function renderAcceptedJob(payload) {
   resultSection.hidden = false;
+  const resultUrl = payload.statusPageUrl || payload.resultPage || '#';
+  const apiStatusUrl = payload.statusApiUrl || payload.statusUrl || '#';
 
   const queue = payload.queue || {};
   resultDetails.textContent = [
@@ -26,11 +29,36 @@ function renderAcceptedJob(payload) {
     `Status: queued`,
     `Timeout: ${payload.timeoutMs ?? 'n/a'}ms`,
     `Queued now: ${queue.queued ?? 0}`,
-    `Active now: ${queue.active ?? 0}`
+    `Active now: ${queue.active ?? 0}`,
+    `View response: ${resultUrl}`
   ].join('\n');
 
-  resultLink.href = payload.resultPage || '#';
-  statusLink.href = payload.statusUrl || '#';
+  resultLink.href = resultUrl;
+  statusLink.href = apiStatusUrl;
+}
+
+function scheduleResultRedirect(payload) {
+  const destination = payload.statusPageUrl || payload.resultPage;
+  if (!destination) {
+    return;
+  }
+
+  if (redirectTimer) {
+    clearTimeout(redirectTimer);
+  }
+
+  redirectTimer = setTimeout(() => {
+    navigateTo(destination);
+  }, 1200);
+}
+
+function navigateTo(destination) {
+  if (typeof window.__llmNavigateTo === 'function') {
+    window.__llmNavigateTo(destination);
+    return;
+  }
+
+  window.location.assign(destination);
 }
 
 async function submitPrompt(event) {
@@ -64,8 +92,9 @@ async function submitPrompt(event) {
       return;
     }
 
-    setStatus('Prompt queued. Use the links below to open your response.', 'queued');
+    setStatus('Prompt queued. Opening the live status page now.', 'queued');
     renderAcceptedJob(payload);
+    scheduleResultRedirect(payload);
     promptInput.value = '';
   } catch (error) {
     setStatus(`Network error: ${error.message}`, 'failed');
@@ -79,5 +108,7 @@ submitForm.addEventListener('submit', submitPrompt);
 window.__llmSubmit = {
   buildRequestBody,
   submitPrompt,
-  renderAcceptedJob
+  renderAcceptedJob,
+  scheduleResultRedirect,
+  navigateTo
 };

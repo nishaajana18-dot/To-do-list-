@@ -197,6 +197,10 @@ function resolveServerTimeoutMs() {
   return Math.min(Math.max(OLLAMA_TIMEOUT_MS, MIN_REQUEST_TIMEOUT_MS), MAX_REQUEST_TIMEOUT_MS);
 }
 
+function buildAbsoluteUrl(req, pathname) {
+  return `${req.protocol}://${req.get("host")}${pathname}`;
+}
+
 async function queryOllama(prompt, timeoutMs) {
   // Abort slow upstream calls so a model request cannot hang indefinitely.
   const controller = new AbortController();
@@ -324,6 +328,8 @@ async function handleInfer(req, res) {
     const job = createInferenceJob(trimmedPrompt, timeoutMs);
     const statusUrl = `/api/infer/${job.id}`;
     const resultPage = `/llm-job/${encodeURIComponent(job.id)}`;
+    const statusPageUrl = buildAbsoluteUrl(req, resultPage);
+    const statusApiUrl = buildAbsoluteUrl(req, statusUrl);
 
     res.status(202).json({
       message: "Your prompt is being generated. You can submit another prompt right away.",
@@ -333,7 +339,9 @@ async function handleInfer(req, res) {
       prompt: trimmedPrompt,
       timeoutMs: job.timeoutMs,
       statusUrl,
+      statusApiUrl,
       resultPage,
+      statusPageUrl,
       queue: {
         queueDepthAtAccept: inferQueue.length,
         ...getQueueStatus()

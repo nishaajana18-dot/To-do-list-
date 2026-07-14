@@ -128,6 +128,9 @@ test('assigns sequential numbers and eventually returns responses', async () => 
 
   expect(first.response.status).toBe(202);
   expect(first.body.requestNumber).toBe(1);
+  expect(first.body.resultPage).toBe(`/llm-job/${first.body.jobId}`);
+  expect(first.body.statusPageUrl).toBe(`${apiBaseUrl}/llm-job/${first.body.jobId}`);
+  expect(first.body.statusApiUrl).toBe(`${apiBaseUrl}/api/infer/${first.body.jobId}`);
   expect(firstResult.status).toBe('completed');
   expect(firstResult.response).toBe('answer: first prompt');
   expect(second.body.requestNumber).toBe(2);

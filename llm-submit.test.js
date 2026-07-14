@@ -35,12 +35,18 @@ async function flushAsync() {
 }
 
 describe('llm submit page', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
   afterEach(() => {
+    jest.useRealTimers();
     jest.restoreAllMocks();
+    delete window.__llmNavigateTo;
     document.body.innerHTML = '';
   });
 
-  test('submits prompt and renders accepted job links', async () => {
+  test('submits prompt, renders job links, and redirects to the live status page', async () => {
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -48,10 +54,14 @@ describe('llm submit page', () => {
         requestNumber: 3,
         timeoutMs: 45000,
         resultPage: '/llm-job/job-123',
+        statusPageUrl: 'http://localhost:3001/llm-job/job-123',
         statusUrl: '/api/infer/job-123',
+        statusApiUrl: 'http://localhost:3001/api/infer/job-123',
         queue: { queued: 1, active: 1 }
       })
     });
+    const assignMock = jest.fn();
+    window.__llmNavigateTo = assignMock;
 
     loadSubmitPage(fetchMock);
     submitPrompt('Write a short poem.');
@@ -63,10 +73,14 @@ describe('llm submit page', () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
       prompt: 'Write a short poem.'
     });
-    expect(document.getElementById('submit-status').textContent).toContain('Use the links below');
+    expect(document.getElementById('submit-status').textContent).toContain('Opening the live status page now');
     expect(document.getElementById('submit-result').hidden).toBe(false);
-    expect(document.getElementById('result-link').getAttribute('href')).toBe('/llm-job/job-123');
-    expect(document.getElementById('status-link').getAttribute('href')).toBe('/api/infer/job-123');
+    expect(document.getElementById('submit-result-details').textContent).toContain('http://localhost:3001/llm-job/job-123');
+    expect(document.getElementById('result-link').getAttribute('href')).toBe('http://localhost:3001/llm-job/job-123');
+    expect(document.getElementById('status-link').getAttribute('href')).toBe('http://localhost:3001/api/infer/job-123');
+
+    jest.advanceTimersByTime(1200);
+    expect(assignMock).toHaveBeenCalledWith('http://localhost:3001/llm-job/job-123');
   });
 
   test('validates empty prompts before making a request', () => {

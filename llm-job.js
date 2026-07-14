@@ -77,7 +77,7 @@ function renderJob(data) {
 
   if (data.status === 'queued') {
     jobResponse.textContent = 'Response\nWaiting in queue...';
-    setStatus(`Prompt ${data.requestNumber ?? ''} is waiting in queue.`.trim(), 'queued');
+    setStatus(`Prompt ${data.requestNumber ?? ''} is waiting in queue before the model starts thinking.`.trim(), 'queued');
     scheduleNextPoll();
     return;
   }
@@ -87,7 +87,7 @@ function renderJob(data) {
     const elapsedMs = data.startedAt ? Math.max(0, Date.now() - data.startedAt) : 0;
     const remainingMs = data.timeoutMs ? Math.max(0, data.timeoutMs - elapsedMs) : null;
     const timeoutText = remainingMs === null ? '' : ` Timeout in ${formatDuration(remainingMs)}.`;
-    setStatus(`Prompt ${data.requestNumber ?? ''} is being processed.${timeoutText}`.trim(), 'processing');
+    setStatus(`Model is still thinking for prompt ${data.requestNumber ?? ''}.${timeoutText}`.trim(), 'processing');
     scheduleNextPoll();
     return;
   }

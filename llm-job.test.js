@@ -95,7 +95,7 @@ describe('llm job page', () => {
     await loadJobPage(fetchMock);
 
     expect(document.getElementById('job-response').textContent).toContain('Waiting in queue');
-    expect(document.getElementById('job-status').textContent).toContain('waiting in queue');
+    expect(document.getElementById('job-status').textContent).toContain('waiting in queue before the model starts thinking');
 
     jest.advanceTimersByTime(2000);
     await Promise.resolve();
@@ -104,6 +104,30 @@ describe('llm job page', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(document.getElementById('job-response').textContent).toContain('Soft rain on the glass.');
     expect(document.getElementById('job-status').textContent).toBe('Response ready.');
+  });
+
+  test('shows that the model is still thinking while processing', async () => {
+    const startedAt = Date.now() - 2000;
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        jobId: 'job-123',
+        requestNumber: 10,
+        status: 'processing',
+        prompt: 'Explain inertia.',
+        response: null,
+        timeoutMs: 10000,
+        startedAt,
+        queue: { queued: 0, active: 1, completed: 0 },
+        timing: { queuedMs: 100, processingMs: null, totalMs: null }
+      })
+    });
+
+    await loadJobPage(fetchMock);
+
+    expect(document.getElementById('job-status').textContent).toContain('Model is still thinking for prompt 10.');
+    expect(document.getElementById('job-status').textContent).toContain('Timeout in');
+    expect(document.getElementById('job-response').textContent).toContain('Generating response');
   });
 
   test('shows a clear timed out message', async () => {
