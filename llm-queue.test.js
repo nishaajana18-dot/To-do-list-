@@ -3,6 +3,7 @@
 function setupDom() {
   document.body.innerHTML = `
     <main id="llm-queue-app">
+      <button id="clear-completed-btn" type="button">Clear completed</button>
       <section id="queue-list"></section>
     </main>
   `;
@@ -70,6 +71,35 @@ describe('queue inspector', () => {
       jobs: []
     })));
 
+    expect(document.getElementById('queue-list').textContent).toContain('Queue is empty.');
+    expect(document.getElementById('clear-completed-btn').disabled).toBe(true);
+  });
+
+  test('clears completed requests and keeps the confirmation visible', async () => {
+    let jobs = [{
+      jobId: 'done-job',
+      requestNumber: 1,
+      status: 'completed',
+      resultPage: '/llm-job/done-job'
+    }];
+    const fetchMock = jest.fn((url, options) => {
+      if (url === '/api/jobs/completed') {
+        jobs = [];
+        return response({ cleared: 1, queue: { queued: 0, active: 0 } });
+      }
+      return response({ queue: { queued: 0, active: 0 }, jobs });
+    });
+
+    await loadQueuePage(fetchMock);
+    document.getElementById('clear-completed-btn').click();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const clearCall = fetchMock.mock.calls.find(([url]) => url === '/api/jobs/completed');
+    expect(clearCall[1].method).toBe('DELETE');
+    expect(document.getElementById('clear-completed-btn').textContent).toBe('Cleared 1');
     expect(document.getElementById('queue-list').textContent).toContain('Queue is empty.');
   });
 });

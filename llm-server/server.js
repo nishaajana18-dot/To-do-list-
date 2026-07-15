@@ -200,6 +200,17 @@ function resolveServerTimeoutMs() {
   return Math.min(Math.max(OLLAMA_TIMEOUT_MS, MIN_REQUEST_TIMEOUT_MS), MAX_REQUEST_TIMEOUT_MS);
 }
 
+function clearCompletedJobs() {
+  let cleared = 0;
+  for (const [id, job] of inferJobs.entries()) {
+    if (["completed", "failed", "timed_out"].includes(job.status)) {
+      inferJobs.delete(id);
+      cleared += 1;
+    }
+  }
+  return cleared;
+}
+
 function buildAbsoluteUrl(req, pathname) {
   return `${req.protocol}://${req.get("host")}${pathname}`;
 }
@@ -255,6 +266,7 @@ app.get("/api", (req, res) => {
       "POST /infer": "Legacy alias for /api/infer",
       "GET /api/infer/:jobId": "Get status/result for one prompt job",
       "GET /api/jobs": "List all tracked jobs and their unique URLs",
+      "DELETE /api/jobs/completed": "Clear completed, timed-out, and failed jobs",
       "GET /api/queue": "Get inference queue status"
     },
     timeoutPolicy: {
@@ -279,6 +291,14 @@ app.get("/api/jobs", (req, res) => {
   res.json({
     queue: getQueueStatus(),
     jobs: listJobs()
+  });
+});
+
+app.delete("/api/jobs/completed", (req, res) => {
+  const cleared = clearCompletedJobs();
+  res.json({
+    cleared,
+    queue: getQueueStatus()
   });
 });
 

@@ -624,6 +624,9 @@ body.llm-shell {
 
 /* Queue inspector */
 .queue-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
   padding: 58px 0 34px;
 }
 

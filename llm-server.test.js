@@ -111,8 +111,8 @@ test('serves the queue inspector page', async () => {
   const html = await response.text();
 
   expect(response.status).toBe(200);
-  expect(html).toContain('href="./style.css?v=15"');
-  expect(html).toContain('src="./llm-queue.js?v=5"');
+  expect(html).toContain('href="./style.css?v=16"');
+  expect(html).toContain('src="./llm-queue.js?v=6"');
   expect(html).toContain('id="queue-list"');
 });
 
@@ -165,4 +165,20 @@ test('marks model calls timed_out when their specific limit expires', async () =
   expect(result.status).toBe('timed_out');
   expect(result.error).toContain('timed out after 40ms');
   expect(result.response).toBeNull();
+});
+
+test('clears only terminal jobs from the tracked job list', async () => {
+  const completed = await postPrompt('clear this completed prompt');
+  await waitForTerminal(completed.body.jobId);
+  const queued = await postPrompt('protected queued prompt');
+
+  const response = await fetch(`${apiBaseUrl}/api/jobs/completed`, { method: 'DELETE' });
+  const body = await response.json();
+  const completedLookup = await fetch(`${apiBaseUrl}/api/infer/${completed.body.jobId}`);
+  const queuedLookup = await fetch(`${apiBaseUrl}/api/infer/${queued.body.jobId}`);
+
+  expect(response.status).toBe(200);
+  expect(body.cleared).toBeGreaterThanOrEqual(1);
+  expect(completedLookup.status).toBe(404);
+  expect(queuedLookup.status).toBe(200);
 });

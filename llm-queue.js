@@ -1,4 +1,5 @@
 const queueList = document.getElementById('queue-list');
+const clearCompletedButton = document.getElementById('clear-completed-btn');
 
 const STATUS_LABELS = {
   queued: 'Waiting in Queue',
@@ -7,8 +8,10 @@ const STATUS_LABELS = {
   failed: 'Error',
   completed: 'Done'
 };
+const TERMINAL_STATUSES = new Set(['completed', 'failed', 'timed_out']);
 
 let queuePollTimer = null;
+let clearButtonResetTimer = null;
 
 function getStatusLabel(status) {
   return STATUS_LABELS[status] || 'Error';
@@ -31,9 +34,15 @@ function createQueueRow(job) {
   return article;
 }
 
+function updateClearButton(jobs) {
+  const terminalCount = jobs.filter((job) => TERMINAL_STATUSES.has(job.status)).length;
+  clearCompletedButton.disabled = terminalCount === 0;
+}
+
 function renderQueue(payload) {
   const jobs = Array.isArray(payload.jobs) ? payload.jobs : [];
   queueList.replaceChildren();
+  updateClearButton(jobs);
 
   if (!jobs.length) {
     const empty = document.createElement('p');
@@ -53,6 +62,7 @@ function scheduleRefresh() {
 
 function stopPolling() {
   clearTimeout(queuePollTimer);
+  clearTimeout(clearButtonResetTimer);
   queuePollTimer = null;
 }
 
@@ -75,12 +85,40 @@ async function loadQueue() {
   }
 }
 
+async function clearCompletedJobs() {
+  clearTimeout(clearButtonResetTimer);
+  clearCompletedButton.disabled = true;
+  clearCompletedButton.textContent = 'Clearing...';
+
+  try {
+    const response = await fetch('/api/jobs/completed', { method: 'DELETE' });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error || 'Unable to clear completed requests.');
+    }
+
+    clearCompletedButton.textContent = `Cleared ${payload.cleared}`;
+    await loadQueue();
+    clearButtonResetTimer = setTimeout(() => {
+      clearCompletedButton.textContent = 'Clear completed';
+    }, 1200);
+  } catch (error) {
+    clearCompletedButton.textContent = 'Clear failed';
+    clearButtonResetTimer = setTimeout(() => {
+      clearCompletedButton.textContent = 'Clear completed';
+    }, 1200);
+  }
+}
+
+clearCompletedButton.addEventListener('click', clearCompletedJobs);
 loadQueue();
 
 window.__llmQueue = {
+  clearCompletedJobs,
   createQueueRow,
   getStatusLabel,
   loadQueue,
   renderQueue,
-  stopPolling
+  stopPolling,
+  updateClearButton
 };

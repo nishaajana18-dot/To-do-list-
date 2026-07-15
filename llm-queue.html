@@ -9,7 +9,7 @@
       window.location.replace('http://localhost:3001/llm-queue');
     }
   </script>
-  <link rel="stylesheet" href="./style.css?v=15">
+  <link rel="stylesheet" href="./style.css?v=16">
 </head>
 <body class="llm-shell">
   <main id="llm-queue-app" class="llm-page queue-page">
@@ -23,6 +23,7 @@
 
     <section class="queue-heading">
       <h1>Queue</h1>
+      <button id="clear-completed-btn" class="refresh-button" type="button">Clear completed</button>
     </section>
 
     <section id="queue-list" class="queue-list" aria-live="polite">
@@ -30,6 +31,6 @@
     </section>
   </main>
 
-  <script src="./llm-queue.js?v=5"></script>
+  <script src="./llm-queue.js?v=6"></script>
 </body>
 </html>
