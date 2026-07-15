@@ -29,7 +29,7 @@ describe('queue inspector', () => {
     document.body.innerHTML = '';
   });
 
-  test('shows only each request number and queue state', async () => {
+  test('shows each prompt number with its exact queue state', async () => {
     const statuses = ['queued', 'processing', 'timed_out', 'failed', 'completed'];
     const fetchMock = jest.fn().mockImplementation(() => response({
       queue: { queued: 1, active: 1 },
@@ -45,16 +45,23 @@ describe('queue inspector', () => {
 
     await loadQueuePage(fetchMock);
 
+    const rows = Array.from(document.querySelectorAll('.queue-row')).map((row) => ({
+      prompt: row.querySelector('.queue-number').textContent,
+      status: row.querySelector('.queue-state').textContent,
+      href: row.querySelector('.queue-number').getAttribute('href')
+    }));
+    expect(rows).toEqual([
+      { prompt: 'Prompt 1', status: 'Waiting in Queue', href: '/llm-job/job-0' },
+      { prompt: 'Prompt 2', status: 'Waiting for model response', href: '/llm-job/job-1' },
+      { prompt: 'Prompt 3', status: 'Timeout', href: '/llm-job/job-2' },
+      { prompt: 'Prompt 4', status: 'Error', href: '/llm-job/job-3' },
+      { prompt: 'Prompt 5', status: 'Done', href: '/llm-job/job-4' }
+    ]);
+
     const text = document.getElementById('queue-list').textContent;
-    expect(text).toContain('Waiting in Queue');
-    expect(text).toContain('Waiting for model response');
-    expect(text).toContain('Timeout');
-    expect(text).toContain('Error');
-    expect(text).toContain('Done');
     expect(text).not.toContain('This body must stay hidden');
     expect(text).not.toContain('View');
     expect(document.querySelectorAll('.queue-row')).toHaveLength(5);
-    expect(document.querySelector('.queue-row a')).toBeNull();
   });
 
   test('shows an empty queue clearly', async () => {

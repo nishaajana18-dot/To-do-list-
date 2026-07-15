@@ -330,6 +330,30 @@ body.llm-shell {
   min-height: 84px;
 }
 
+.site-nav {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.site-nav a {
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #8ec4ff;
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  padding: 9px 12px;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.site-nav a:hover,
+.site-nav a[aria-current="page"] {
+  background: var(--surface-deep);
+  border-color: #2f3e56;
+  color: #ffffff;
+}
+
 .llm-brand {
   align-items: center;
   color: var(--ink);

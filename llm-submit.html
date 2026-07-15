@@ -9,7 +9,7 @@
       window.location.replace('http://localhost:3001/llm-submit');
     }
   </script>
-  <link rel="stylesheet" href="./style.css?v=13">
+  <link rel="stylesheet" href="./style.css?v=15">
 </head>
 <body class="llm-shell">
   <main id="llm-submit-app" class="llm-page">
@@ -17,7 +17,10 @@
       <a class="llm-brand" href="/llm-submit" aria-label="Local AI home">
         <span>Local AI</span>
       </a>
-      <a class="new-prompt-link" href="/llm-queue">Queue</a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="/llm-submit" aria-current="page">Prompt</a>
+        <a href="/llm-queue">Queue</a>
+      </nav>
     </header>
 
     <section class="submit-hero">

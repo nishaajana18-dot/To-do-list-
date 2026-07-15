@@ -18,9 +18,10 @@ function createQueueRow(job) {
   const article = document.createElement('article');
   article.className = 'queue-row';
 
-  const number = document.createElement('span');
+  const number = document.createElement('a');
   number.className = 'queue-number';
-  number.textContent = `Request ${job.requestNumber ?? '-'}`;
+  number.href = job.resultPage;
+  number.textContent = `Prompt ${job.requestNumber ?? '-'}`;
 
   const status = document.createElement('span');
   status.className = `queue-state ${job.status || 'failed'}`;
