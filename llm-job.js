@@ -10,6 +10,7 @@ const jobStatus = document.getElementById('job-status');
 const jobStatusText = document.getElementById('job-status-text') || jobStatus;
 const jobPrompt = document.getElementById('job-prompt');
 const jobResponse = document.getElementById('job-response');
+const conversation = document.getElementById('conversation');
 const jobQueue = document.getElementById('job-queue');
 const refreshJobButton = document.getElementById('refresh-job-btn');
 const followUpSection = document.getElementById('follow-up-section');
@@ -17,10 +18,10 @@ const followUpForm = document.getElementById('follow-up-form');
 const followUpInput = document.getElementById('follow-up-input');
 const followUpButton = document.getElementById('follow-up-btn');
 const followUpStatus = document.getElementById('follow-up-status');
-const followUpLink = document.getElementById('follow-up-link');
 
 let pollTimer = null;
 let refreshResetTimer = null;
+let activeJobId = jobId;
 // Polling is intentionally lightweight; the server remains the source of truth.
 const POLL_INTERVAL_MS = 2000;
 
@@ -72,6 +73,28 @@ function setFollowUpAvailability(status) {
   }
 }
 
+function getResponseText(job) {
+  if (job.status === 'queued') return 'Waiting in queue...';
+  if (job.status === 'processing') return 'Generating response...';
+  if (job.status === 'completed') return job.response || 'No text was returned.';
+  return job.error || (job.status === 'timed_out' ? 'The request timed out.' : 'Request failed.');
+}
+
+function renderFollowUps(jobs) {
+  if (!conversation) return;
+  conversation.querySelectorAll('.conversation-turn').forEach((turn) => turn.remove());
+  jobs.forEach((job) => {
+    const turn = document.createElement('div');
+    turn.className = 'response-grid conversation-turn';
+    turn.innerHTML = '<section class="response-panel prompt-panel"><p class="panel-label"></p><pre></pre></section><section class="response-panel answer-panel"><p class="panel-label">Answer</p><pre></pre></section>';
+    turn.querySelector('.panel-label').textContent = `Prompt #${job.requestNumber}`;
+    const fields = turn.querySelectorAll('pre');
+    fields[0].textContent = job.prompt;
+    fields[1].textContent = getResponseText(job);
+    conversation.appendChild(turn);
+  });
+}
+
 function stopPolling() {
   if (pollTimer) {
     clearTimeout(pollTimer);
@@ -86,13 +109,19 @@ function scheduleNextPoll() {
 }
 
 function renderJob(data) {
-  const requestLabel = data.requestNumber ? `Prompt #${data.requestNumber}` : 'Prompt';
-  jobPrompt.textContent = data.prompt ? `${requestLabel}\n${data.prompt}` : `${requestLabel}\nWaiting for prompt details...`;
-  jobQueue.textContent = renderQueueSnapshot(data);
-  setFollowUpAvailability(data.status);
+  const jobs = Array.isArray(data.conversation) && data.conversation.length ? data.conversation : [data];
+  const originalJob = jobs[0];
+  const currentJob = jobs[jobs.length - 1];
+  activeJobId = currentJob.jobId || data.jobId;
+  const requestLabel = originalJob.requestNumber ? `Prompt #${originalJob.requestNumber}` : 'Prompt';
+  jobPrompt.textContent = originalJob.prompt ? `${requestLabel}\n${originalJob.prompt}` : `${requestLabel}\nWaiting for prompt details...`;
+  jobResponse.textContent = `Response\n${getResponseText(originalJob)}`;
+  renderFollowUps(jobs.slice(1));
+  jobQueue.textContent = renderQueueSnapshot({ ...currentJob, queue: data.queue });
+  setFollowUpAvailability(currentJob.status);
+  data = currentJob;
 
   if (data.status === 'queued') {
-    jobResponse.textContent = 'Response\nWaiting in queue...';
     setStatus(`Prompt ${data.requestNumber ?? ''} is waiting in queue before the model starts thinking.`.trim(), 'queued');
     document.title = `Prompt #${data.requestNumber ?? ''} · Waiting`;
     scheduleNextPoll();
@@ -100,7 +129,6 @@ function renderJob(data) {
   }
 
   if (data.status === 'processing') {
-    jobResponse.textContent = 'Response\nGenerating response...';
     const elapsedMs = data.startedAt ? Math.max(0, Date.now() - data.startedAt) : 0;
     const remainingMs = data.timeoutMs ? Math.max(0, data.timeoutMs - elapsedMs) : null;
     const timeoutText = remainingMs === null ? '' : ` Timeout in ${formatDuration(remainingMs)}.`;
@@ -111,7 +139,6 @@ function renderJob(data) {
   }
 
   if (data.status === 'completed') {
-    jobResponse.textContent = data.response ? `Response\n${data.response}` : 'Response\nNo text was returned.';
     setStatus('Response ready.', 'completed');
     document.title = `Prompt #${data.requestNumber ?? ''} · Answer ready`;
     stopPolling();
@@ -119,14 +146,12 @@ function renderJob(data) {
   }
 
   if (data.status === 'timed_out') {
-    jobResponse.textContent = `Response\n${data.error || 'The request timed out.'}`;
     setStatus(`Request timed out after ${formatDuration(data.timeoutMs)}.`, 'timed_out');
     document.title = `Prompt #${data.requestNumber ?? ''} · Timed out`;
     stopPolling();
     return;
   }
 
-  jobResponse.textContent = `Response\n${data.error || 'Request failed.'}`;
   setStatus('Request failed.', 'failed');
   document.title = `Prompt #${data.requestNumber ?? ''} · Failed`;
   stopPolling();
@@ -143,11 +168,10 @@ async function submitFollowUp(event) {
 
   followUpButton.disabled = true;
   followUpStatus.textContent = 'Queueing follow-up...';
-  followUpLink.hidden = true;
 
   try {
-    // The server attaches earlier turns and returns a new request page for this turn.
-    const response = await fetch(`/api/infer/${encodeURIComponent(jobId)}/follow-up`, {
+    // Keep this URL open and append the new turn beneath the original chat.
+    const response = await fetch(`/api/infer/${encodeURIComponent(activeJobId)}/follow-up`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt })
@@ -159,9 +183,8 @@ async function submitFollowUp(event) {
     }
 
     followUpInput.value = '';
-    followUpStatus.textContent = 'Follow-up queued.';
-    followUpLink.href = payload.statusPageUrl || payload.resultPage;
-    followUpLink.hidden = false;
+    followUpStatus.textContent = 'Follow-up queued below.';
+    await loadJob();
   } catch (error) {
     followUpStatus.textContent = error.message;
   } finally {

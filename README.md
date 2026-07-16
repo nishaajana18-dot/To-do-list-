@@ -111,7 +111,7 @@ Follow-up endpoint:
 
 - `POST /api/infer/:jobId/follow-up`
 	- Queues a follow-up for a completed job.
-	- Uses the earlier prompt and answer as context for the model, while the new request page shows only the new prompt and answer.
+	- Uses the earlier prompt and answer as context for the model; the original request page stays open and appends the new prompt and answer to the chat.
 	- Accepts the same JSON body as `POST /api/infer` and returns the same request links.
 	- Returns `409` until the parent request has completed.
 
@@ -179,7 +179,7 @@ Result page still exists for tracking individual jobs, with a unique URL per pro
 - `/llm-job/<jobId>`
 	- Shows waiting/processing/completed/timed out/failed states.
 	- Polls every two seconds and displays the configured timeout and remaining processing time.
-	- Once a response is ready, provides a follow-up field that creates a new linked request using the completed chat as context.
+	- Once a response is ready, provides a follow-up field that appends the next prompt and response to the same page using the completed chat as context.
 
 Browser-first submission flow:
 

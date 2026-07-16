@@ -133,6 +133,27 @@ function buildFollowUpModelPrompt(parentJob, question) {
   return `Conversation so far:\n${conversation}\n\nUser: ${question}\nAssistant:`;
 }
 
+function getThreadJobs(job) {
+  const rootJobId = job.rootJobId || job.id;
+  // A thread page starts at the original request, even from a follow-up URL.
+  return Array.from(inferJobs.values())
+    .filter((candidate) => (candidate.rootJobId || candidate.id) === rootJobId)
+    .sort((a, b) => a.createdAt - b.createdAt);
+}
+
+function serializeJob(job) {
+  const queuedMs = job.startedAt ? job.startedAt - job.createdAt : null;
+  const processingMs = job.completedAt && job.startedAt ? job.completedAt - job.startedAt : null;
+
+  return {
+    jobId: job.id, requestNumber: job.requestNumber, status: job.status, prompt: job.prompt,
+    timeoutMs: job.timeoutMs, parentJobId: job.parentJobId, rootJobId: job.rootJobId,
+    createdAt: job.createdAt, startedAt: job.startedAt, completedAt: job.completedAt,
+    timing: { queuedMs, processingMs, totalMs: job.completedAt ? job.completedAt - job.createdAt : null },
+    response: job.response, error: job.error
+  };
+}
+
 function cleanupExpiredJobs() {
   // Only finished jobs expire; active work is never removed from the map.
   const now = Date.now();
@@ -340,27 +361,10 @@ app.get("/api/infer/:jobId", (req, res) => {
     });
   }
 
-  const queuedMs = job.startedAt ? job.startedAt - job.createdAt : null;
-  const processingMs = job.completedAt && job.startedAt ? job.completedAt - job.startedAt : null;
-
   return res.json({
-    jobId: job.id,
-    requestNumber: job.requestNumber,
-    status: job.status,
-    prompt: job.prompt,
-    timeoutMs: job.timeoutMs,
-    parentJobId: job.parentJobId,
-    rootJobId: job.rootJobId,
-    createdAt: job.createdAt,
-    startedAt: job.startedAt,
-    completedAt: job.completedAt,
-    timing: {
-      queuedMs,
-      processingMs,
-      totalMs: job.completedAt ? job.completedAt - job.createdAt : null
-    },
-    response: job.response,
-    error: job.error,
+    ...serializeJob(job),
+    // The page uses this to render the original request and all later turns together.
+    conversation: getThreadJobs(job).map(serializeJob),
     queue: getQueueStatus()
   });
 });

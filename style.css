@@ -807,6 +807,11 @@ body.llm-shell {
   grid-template-columns: minmax(240px, 0.75fr) minmax(420px, 1.25fr);
 }
 
+/* Follow-up turns are appended here so one request page reads as one chat. */
+.conversation-list > .response-grid + .response-grid {
+  margin-top: 28px;
+}
+
 .response-panel {
   background: var(--surface);
   border: 1px solid var(--line);

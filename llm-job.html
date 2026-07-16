@@ -31,7 +31,7 @@
       <span id="job-status-text">Loading job status...</span>
     </section>
 
-    <div class="response-grid">
+    <div id="conversation" class="conversation-list" aria-live="polite">
       <section class="response-panel prompt-panel">
         <p class="panel-label">Prompt</p>
         <pre id="job-prompt">Loading prompt details...</pre>
@@ -51,7 +51,6 @@
         <button id="follow-up-btn" type="submit">Ask follow-up</button>
       </form>
       <p id="follow-up-status" class="follow-up-status" aria-live="polite"></p>
-      <a id="follow-up-link" class="quiet-link" href="#" hidden>View follow-up</a>
     </section>
 
     <details class="request-details">
@@ -62,6 +61,6 @@ Status: loading</pre>
 
   </main>
 
-  <script src="/llm-job.js?v=11"></script>
+  <script src="/llm-job.js?v=12"></script>
 </body>
 </html>

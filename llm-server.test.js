@@ -102,7 +102,7 @@ test('serves nested result pages with absolute asset paths', async () => {
 
   expect(response.status).toBe(200);
   expect(html).toContain('href="/style.css?v=17"');
-  expect(html).toContain('src="/llm-job.js?v=11"');
+  expect(html).toContain('src="/llm-job.js?v=12"');
 });
 
 test('serves the browser submit page and supports direct-file entry', async () => {
