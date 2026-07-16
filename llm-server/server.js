@@ -104,9 +104,31 @@ function listJobs() {
       createdAt: job.createdAt,
       completedAt: job.completedAt,
       timeoutMs: job.timeoutMs,
+      parentJobId: job.parentJobId,
+      rootJobId: job.rootJobId,
       statusUrl: `/api/infer/${job.id}`,
       resultPage: `/llm-job/${job.id}`
     }));
+}
+
+function getConversationJobs(job) {
+  const conversation = [];
+  let currentJob = job;
+
+  while (currentJob) {
+    conversation.unshift(currentJob);
+    currentJob = currentJob.parentJobId ? inferJobs.get(currentJob.parentJobId) : null;
+  }
+
+  return conversation;
+}
+
+function buildFollowUpModelPrompt(parentJob, question) {
+  const conversation = getConversationJobs(parentJob)
+    .map((job) => `User: ${job.prompt}\nAssistant: ${job.response || job.error || 'No response available.'}`)
+    .join('\n\n');
+
+  return `Conversation so far:\n${conversation}\n\nUser: ${question}\nAssistant:`;
 }
 
 function cleanupExpiredJobs() {
@@ -132,7 +154,7 @@ function classifyJobFailure(error) {
   return "failed";
 }
 
-function createInferenceJob(prompt, timeoutMs) {
+function createInferenceJob(prompt, timeoutMs, options = {}) {
   cleanupExpiredJobs();
 
   if (inferQueue.length >= INFER_QUEUE_MAX_SIZE) {
@@ -147,6 +169,9 @@ function createInferenceJob(prompt, timeoutMs) {
     id: jobId,
     requestNumber: nextRequestNumber++,
     prompt,
+    modelPrompt: options.modelPrompt || prompt,
+    parentJobId: options.parentJobId || null,
+    rootJobId: options.rootJobId || jobId,
     timeoutMs,
     status: "queued",
     createdAt,
@@ -180,7 +205,7 @@ function processInferQueue() {
 
       try {
         // A job's timeout begins when model processing starts, not while queued.
-        const llmResponse = await queryOllama(nextJob.prompt, nextJob.timeoutMs);
+        const llmResponse = await queryOllama(nextJob.modelPrompt, nextJob.timeoutMs);
         nextJob.status = "completed";
         nextJob.response = llmResponse;
       } catch (error) {
@@ -265,6 +290,7 @@ app.get("/api", (req, res) => {
       "POST /api/infer": "Create an async prompt job and return a job URL",
       "POST /infer": "Legacy alias for /api/infer",
       "GET /api/infer/:jobId": "Get status/result for one prompt job",
+      "POST /api/infer/:jobId/follow-up": "Queue a follow-up using a completed request as context",
       "GET /api/jobs": "List all tracked jobs and their unique URLs",
       "DELETE /api/jobs/completed": "Clear completed, timed-out, and failed jobs",
       "GET /api/queue": "Get inference queue status"
@@ -320,6 +346,8 @@ app.get("/api/infer/:jobId", (req, res) => {
     status: job.status,
     prompt: job.prompt,
     timeoutMs: job.timeoutMs,
+    parentJobId: job.parentJobId,
+    rootJobId: job.rootJobId,
     createdAt: job.createdAt,
     startedAt: job.startedAt,
     completedAt: job.completedAt,
@@ -386,6 +414,67 @@ async function handleInfer(req, res) {
   }
 }
 
+function sendAcceptedJob(req, res, job, message) {
+  const statusUrl = `/api/infer/${job.id}`;
+  const resultPage = `/llm-job/${encodeURIComponent(job.id)}`;
+
+  return res.status(202).json({
+    message,
+    jobId: job.id,
+    requestNumber: job.requestNumber,
+    model: OLLAMA_MODEL,
+    prompt: job.prompt,
+    timeoutMs: job.timeoutMs,
+    parentJobId: job.parentJobId,
+    rootJobId: job.rootJobId,
+    statusUrl,
+    statusApiUrl: buildAbsoluteUrl(req, statusUrl),
+    resultPage,
+    statusPageUrl: buildAbsoluteUrl(req, resultPage),
+    queue: {
+      queueDepthAtAccept: inferQueue.length,
+      ...getQueueStatus()
+    }
+  });
+}
+
+async function handleFollowUp(req, res) {
+  const parentJob = inferJobs.get(req.params.jobId);
+  const question = req.body.prompt;
+
+  if (!parentJob) {
+    return res.status(404).json({ error: 'Job not found' });
+  }
+  if (parentJob.status !== 'completed') {
+    return res.status(409).json({
+      error: 'Follow-up unavailable',
+      details: 'Follow-up questions are available after a response is ready.'
+    });
+  }
+  if (!question || typeof question !== 'string' || !question.trim()) {
+    return res.status(400).json({ error: 'prompt is required and must be a non-empty string' });
+  }
+
+  try {
+    const prompt = question.trim();
+    const job = createInferenceJob(prompt, resolveServerTimeoutMs(), {
+      modelPrompt: buildFollowUpModelPrompt(parentJob, prompt),
+      parentJobId: parentJob.id,
+      rootJobId: parentJob.rootJobId || parentJob.id
+    });
+    return sendAcceptedJob(req, res, job, 'Your follow-up is being generated.');
+  } catch (error) {
+    if (error.code === 'QUEUE_FULL') {
+      return res.status(503).json({
+        error: 'Inference queue is full',
+        details: `The queue can hold up to ${INFER_QUEUE_MAX_SIZE} waiting requests.`,
+        queue: getQueueStatus()
+      });
+    }
+    return res.status(502).json({ error: 'Failed to queue follow-up', details: error.message });
+  }
+}
+
 // Preferred endpoint for inference requests.
 app.get("/api/infer", (req, res) => {
   res.status(405).json({
@@ -397,6 +486,7 @@ app.get("/api/infer", (req, res) => {
   });
 });
 app.post("/api/infer", handleInfer);
+app.post("/api/infer/:jobId/follow-up", handleFollowUp);
 // Backward-compatible endpoint to avoid breaking older clients.
 app.get("/infer", (req, res) => {
   res.status(405).json({
