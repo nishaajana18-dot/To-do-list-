@@ -200,13 +200,21 @@ test('creates follow-ups with the completed conversation as model context', asyn
   const followUpResult = await waitForTerminal(followUp.body.jobId);
   const followUpStatus = await fetch(`${apiBaseUrl}/api/infer/${followUp.body.jobId}`);
   const followUpJob = await followUpStatus.json();
+  const queueResponse = await fetch(`${apiBaseUrl}/api/jobs`);
+  const queue = await queueResponse.json();
 
   expect(followUp.response.status).toBe(202);
   expect(followUp.body.parentJobId).toBe(parent.body.jobId);
   expect(followUp.body.rootJobId).toBe(parent.body.jobId);
+  expect(followUp.body.resultPage).toBe(`/llm-job/${parent.body.jobId}`);
   expect(followUpResult.response).toContain('Conversation so far:');
   expect(followUpResult.response).toContain('Tell me a color.');
   expect(followUpResult.response).toContain(parentResult.response);
   expect(followUpResult.response).toContain('Give another color.');
   expect(followUpJob.parentJobId).toBe(parent.body.jobId);
+  expect(followUpJob.conversation).toHaveLength(2);
+  expect(queue.jobs).toEqual(expect.arrayContaining([
+    expect.objectContaining({ jobId: parent.body.jobId, requestNumber: parent.body.requestNumber })
+  ]));
+  expect(queue.jobs.find((job) => job.jobId === followUp.body.jobId)).toBeUndefined();
 });

@@ -95,20 +95,22 @@ function getQueueStatus() {
 }
 function listJobs() {
   return Array.from(inferJobs.values())
+    .filter((job) => !job.parentJobId)
     .sort((a, b) => b.createdAt - a.createdAt)
-    .map((job) => ({
-      jobId: job.id,
-      requestNumber: job.requestNumber,
-      status: job.status,
-      prompt: job.prompt,
-      createdAt: job.createdAt,
-      completedAt: job.completedAt,
-      timeoutMs: job.timeoutMs,
-      parentJobId: job.parentJobId,
-      rootJobId: job.rootJobId,
-      statusUrl: `/api/infer/${job.id}`,
-      resultPage: `/llm-job/${job.id}`
-    }));
+    .map((rootJob) => {
+      const latestJob = getThreadJobs(rootJob).at(-1);
+      return {
+        jobId: rootJob.id,
+        requestNumber: rootJob.requestNumber,
+        status: latestJob.status,
+        prompt: rootJob.prompt,
+        createdAt: rootJob.createdAt,
+        completedAt: latestJob.completedAt,
+        timeoutMs: latestJob.timeoutMs,
+        statusUrl: `/api/infer/${rootJob.id}`,
+        resultPage: `/llm-job/${rootJob.id}`
+      };
+    });
 }
 
 function getConversationJobs(job) {
@@ -155,17 +157,14 @@ function serializeJob(job) {
 }
 
 function cleanupExpiredJobs() {
-  // Only finished jobs expire; active work is never removed from the map.
+  // Retain or remove whole conversations so a parent never loses its follow-up turns.
   const now = Date.now();
-  for (const [id, job] of inferJobs.entries()) {
-    if (!["completed", "failed", "timed_out"].includes(job.status)) {
-      continue;
-    }
-    if (!job.completedAt) {
-      continue;
-    }
-    if (now - job.completedAt > INFER_JOB_RETENTION_MS) {
-      inferJobs.delete(id);
+  for (const rootJob of inferJobs.values()) {
+    if (rootJob.parentJobId) continue;
+    const thread = getThreadJobs(rootJob);
+    const latestJob = thread.at(-1);
+    if (["completed", "failed", "timed_out"].includes(latestJob.status) && latestJob.completedAt && now - latestJob.completedAt > INFER_JOB_RETENTION_MS) {
+      thread.forEach((job) => inferJobs.delete(job.id));
     }
   }
 }
@@ -251,11 +250,13 @@ function resolveServerTimeoutMs() {
 
 function clearCompletedJobs() {
   let cleared = 0;
-  for (const [id, job] of inferJobs.entries()) {
-    if (["completed", "failed", "timed_out"].includes(job.status)) {
-      inferJobs.delete(id);
-      cleared += 1;
-    }
+  for (const rootJob of inferJobs.values()) {
+    if (rootJob.parentJobId) continue;
+    const thread = getThreadJobs(rootJob);
+    const latestJob = thread.at(-1);
+    if (!["completed", "failed", "timed_out"].includes(latestJob.status)) continue;
+    thread.forEach((job) => inferJobs.delete(job.id));
+    cleared += 1;
   }
   return cleared;
 }
@@ -423,7 +424,8 @@ async function handleInfer(req, res) {
 
 function sendAcceptedJob(req, res, job, message) {
   const statusUrl = `/api/infer/${job.id}`;
-  const resultPage = `/llm-job/${encodeURIComponent(job.id)}`;
+  // Follow-ups return the parent page so every turn stays in one visible chat.
+  const resultPage = `/llm-job/${encodeURIComponent(job.rootJobId || job.id)}`;
 
   return res.status(202).json({
     message,

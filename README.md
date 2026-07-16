@@ -98,7 +98,7 @@ Queue status endpoint:
 All jobs endpoint:
 
 - `GET /api/jobs`
-	- Returns all tracked jobs with each job's unique result page URL.
+	- Returns one queue entry per original prompt. Follow-ups remain inside that parent chat rather than appearing as separate prompts.
 
 Job status endpoint:
 
