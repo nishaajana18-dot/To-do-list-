@@ -107,6 +107,14 @@ Job status endpoint:
 	- Includes `requestNumber`, `timeoutMs`, queue/timing info, and response text when completed.
 	- Request numbers restart at `1` whenever the server restarts; use `jobId` to identify a job for the life of that server process.
 
+Follow-up endpoint:
+
+- `POST /api/infer/:jobId/follow-up`
+	- Queues a follow-up for a completed job.
+	- Uses the earlier prompt and answer as context for the model, while the new request page shows only the new prompt and answer.
+	- Accepts the same JSON body as `POST /api/infer` and returns the same request links.
+	- Returns `409` until the parent request has completed.
+
 Accepted response fields from `POST /api/infer` include:
 
 - `jobId`
@@ -171,6 +179,7 @@ Result page still exists for tracking individual jobs, with a unique URL per pro
 - `/llm-job/<jobId>`
 	- Shows waiting/processing/completed/timed out/failed states.
 	- Polls every two seconds and displays the configured timeout and remaining processing time.
+	- Once a response is ready, provides a follow-up field that creates a new linked request using the completed chat as context.
 
 Browser-first submission flow:
 
@@ -180,6 +189,7 @@ Browser-first submission flow:
 	- Shows a recent prompt list with status pills and links to each job page.
 	- Includes a manual Refresh button for recent jobs.
 	- Active jobs refresh automatically while the model is queued or thinking.
+	- Open a completed request to ask a follow-up and receive a link to that new request.
 
 Queue inspector:
 
@@ -260,7 +270,7 @@ foreach ($p in $prompts) {
 
 ## Run tests
 
-This project uses Jest. The suite covers to-do behavior, prompt result-page rendering and polling, plus server integration tests for validation, request numbering, completed responses, timeout limits, and timed-out jobs.
+This project uses Jest. The suite covers to-do behavior, browser submission and queue views, prompt result-page rendering and polling, follow-up requests with conversation context, plus server validation, request numbering, completed responses, timeout limits, and timed-out jobs.
 
 ```powershell
 npm test
@@ -277,9 +287,10 @@ npm test
 - `llm-submit.test.js` - Browser submit-page behavior tests
 - `llm-job.html` - Prompt response tracking page
 - `llm-job.js` - Prompt response polling/render logic
-- `llm-job.test.js` - Prompt result-page rendering and polling tests
+- `llm-job.test.js` - Prompt result-page rendering, polling, and follow-up tests
 - `llm-server.test.js` - LLM API integration and timeout tests using a fake local Ollama server
 - `package.json` - npm scripts and dev dependencies
 - `requirements.txt` - Local tool/version requirements
 - `llm-server/server.js` - Express server for static hosting + LLM inference
+- `llm-queue.html` / `llm-queue.js` - Queue inspector page and its client logic
 - `llm-queue.ps1` - Interactive PowerShell queue client

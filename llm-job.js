@@ -146,6 +146,7 @@ async function submitFollowUp(event) {
   followUpLink.hidden = true;
 
   try {
+    // The server attaches earlier turns and returns a new request page for this turn.
     const response = await fetch(`/api/infer/${encodeURIComponent(jobId)}/follow-up`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

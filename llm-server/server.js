@@ -112,6 +112,7 @@ function listJobs() {
 }
 
 function getConversationJobs(job) {
+  // Follow parent links so a follow-up receives the complete chat in order.
   const conversation = [];
   let currentJob = job;
 
@@ -124,6 +125,7 @@ function getConversationJobs(job) {
 }
 
 function buildFollowUpModelPrompt(parentJob, question) {
+  // Keep the browser request short while sending Ollama the context it needs.
   const conversation = getConversationJobs(parentJob)
     .map((job) => `User: ${job.prompt}\nAssistant: ${job.response || job.error || 'No response available.'}`)
     .join('\n\n');
@@ -169,6 +171,7 @@ function createInferenceJob(prompt, timeoutMs, options = {}) {
     id: jobId,
     requestNumber: nextRequestNumber++,
     prompt,
+    // A follow-up stores its visible question separately from the contextual model input.
     modelPrompt: options.modelPrompt || prompt,
     parentJobId: options.parentJobId || null,
     rootJobId: options.rootJobId || jobId,
