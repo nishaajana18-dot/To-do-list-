@@ -29,6 +29,16 @@ async function postPrompt(prompt, timeoutMs) {
   return { response, body: await response.json() };
 }
 
+async function postFollowUp(jobId, prompt) {
+  const response = await fetch(`${apiBaseUrl}/api/infer/${jobId}/follow-up`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt })
+  });
+
+  return { response, body: await response.json() };
+}
+
 async function waitForTerminal(jobId) {
   const deadline = Date.now() + 2000;
 
@@ -91,8 +101,8 @@ test('serves nested result pages with absolute asset paths', async () => {
   const html = await response.text();
 
   expect(response.status).toBe(200);
-  expect(html).toContain('href="/style.css?v=15"');
-  expect(html).toContain('src="/llm-job.js?v=10"');
+  expect(html).toContain('href="/style.css?v=17"');
+  expect(html).toContain('src="/llm-job.js?v=11"');
 });
 
 test('serves the browser submit page and supports direct-file entry', async () => {
@@ -181,4 +191,22 @@ test('clears only terminal jobs from the tracked job list', async () => {
   expect(body.cleared).toBeGreaterThanOrEqual(1);
   expect(completedLookup.status).toBe(404);
   expect(queuedLookup.status).toBe(200);
+});
+
+test('creates follow-ups with the completed conversation as model context', async () => {
+  const parent = await postPrompt('Tell me a color.', 30);
+  const parentResult = await waitForTerminal(parent.body.jobId);
+  const followUp = await postFollowUp(parent.body.jobId, 'Give another color.');
+  const followUpResult = await waitForTerminal(followUp.body.jobId);
+  const followUpStatus = await fetch(`${apiBaseUrl}/api/infer/${followUp.body.jobId}`);
+  const followUpJob = await followUpStatus.json();
+
+  expect(followUp.response.status).toBe(202);
+  expect(followUp.body.parentJobId).toBe(parent.body.jobId);
+  expect(followUp.body.rootJobId).toBe(parent.body.jobId);
+  expect(followUpResult.response).toContain('Conversation so far:');
+  expect(followUpResult.response).toContain('Tell me a color.');
+  expect(followUpResult.response).toContain(parentResult.response);
+  expect(followUpResult.response).toContain('Give another color.');
+  expect(followUpJob.parentJobId).toBe(parent.body.jobId);
 });

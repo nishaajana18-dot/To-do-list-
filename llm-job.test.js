@@ -9,6 +9,14 @@ function setupDom() {
       <pre id="job-prompt"></pre>
       <pre id="job-response"></pre>
       <pre id="job-queue"></pre>
+      <section id="follow-up-section" hidden>
+        <form id="follow-up-form">
+          <textarea id="follow-up-input"></textarea>
+          <button id="follow-up-btn" type="submit">Ask follow-up</button>
+        </form>
+        <p id="follow-up-status"></p>
+        <a id="follow-up-link" href="#" hidden>View follow-up</a>
+      </section>
     </main>
   `;
 }
@@ -60,6 +68,50 @@ describe('llm job page', () => {
     expect(document.getElementById('job-response').textContent).toContain('Hello there.');
     expect(document.getElementById('job-status').textContent).toBe('Response ready.');
     expect(document.getElementById('job-queue').textContent).toContain('Request number: 7');
+    expect(document.getElementById('follow-up-section').hidden).toBe(false);
+  });
+
+  test('queues a follow-up from a completed response', async () => {
+    const fetchMock = jest.fn((url) => {
+      if (url === '/api/infer/job-123/follow-up') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            jobId: 'job-456',
+            resultPage: '/llm-job/job-456',
+            statusPageUrl: 'http://localhost:3001/llm-job/job-456'
+          })
+        });
+      }
+
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          jobId: 'job-123',
+          requestNumber: 7,
+          status: 'completed',
+          prompt: 'Say hello.',
+          response: 'Hello there.',
+          timeoutMs: 30000,
+          queue: { queued: 0, active: 0, completed: 1 },
+          timing: { queuedMs: 100, processingMs: 1200, totalMs: 1300 }
+        })
+      });
+    });
+
+    await loadJobPage(fetchMock);
+    document.getElementById('follow-up-input').value = 'Can you make that friendlier?';
+    document.getElementById('follow-up-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const followUpCall = fetchMock.mock.calls.find(([url]) => url === '/api/infer/job-123/follow-up');
+    expect(followUpCall[1].method).toBe('POST');
+    expect(JSON.parse(followUpCall[1].body)).toEqual({ prompt: 'Can you make that friendlier?' });
+    expect(document.getElementById('follow-up-status').textContent).toBe('Follow-up queued.');
+    expect(document.getElementById('follow-up-link').hidden).toBe(false);
+    expect(document.getElementById('follow-up-link').getAttribute('href')).toBe('http://localhost:3001/llm-job/job-456');
   });
 
   test('refresh button fetches again and shows visible feedback', async () => {

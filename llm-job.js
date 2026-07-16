@@ -12,6 +12,12 @@ const jobPrompt = document.getElementById('job-prompt');
 const jobResponse = document.getElementById('job-response');
 const jobQueue = document.getElementById('job-queue');
 const refreshJobButton = document.getElementById('refresh-job-btn');
+const followUpSection = document.getElementById('follow-up-section');
+const followUpForm = document.getElementById('follow-up-form');
+const followUpInput = document.getElementById('follow-up-input');
+const followUpButton = document.getElementById('follow-up-btn');
+const followUpStatus = document.getElementById('follow-up-status');
+const followUpLink = document.getElementById('follow-up-link');
 
 let pollTimer = null;
 let refreshResetTimer = null;
@@ -60,6 +66,12 @@ function setStatus(text, type) {
   jobStatusText.textContent = text;
 }
 
+function setFollowUpAvailability(status) {
+  if (followUpSection) {
+    followUpSection.hidden = status !== 'completed';
+  }
+}
+
 function stopPolling() {
   if (pollTimer) {
     clearTimeout(pollTimer);
@@ -77,6 +89,7 @@ function renderJob(data) {
   const requestLabel = data.requestNumber ? `Prompt #${data.requestNumber}` : 'Prompt';
   jobPrompt.textContent = data.prompt ? `${requestLabel}\n${data.prompt}` : `${requestLabel}\nWaiting for prompt details...`;
   jobQueue.textContent = renderQueueSnapshot(data);
+  setFollowUpAvailability(data.status);
 
   if (data.status === 'queued') {
     jobResponse.textContent = 'Response\nWaiting in queue...';
@@ -117,6 +130,42 @@ function renderJob(data) {
   setStatus('Request failed.', 'failed');
   document.title = `Prompt #${data.requestNumber ?? ''} · Failed`;
   stopPolling();
+}
+
+async function submitFollowUp(event) {
+  event.preventDefault();
+  const prompt = followUpInput.value.trim();
+
+  if (!prompt) {
+    followUpStatus.textContent = 'Enter a follow-up question.';
+    return;
+  }
+
+  followUpButton.disabled = true;
+  followUpStatus.textContent = 'Queueing follow-up...';
+  followUpLink.hidden = true;
+
+  try {
+    const response = await fetch(`/api/infer/${encodeURIComponent(jobId)}/follow-up`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.details || payload.error || 'Unable to queue follow-up.');
+    }
+
+    followUpInput.value = '';
+    followUpStatus.textContent = 'Follow-up queued.';
+    followUpLink.href = payload.statusPageUrl || payload.resultPage;
+    followUpLink.hidden = false;
+  } catch (error) {
+    followUpStatus.textContent = error.message;
+  } finally {
+    followUpButton.disabled = false;
+  }
 }
 
 async function loadJob() {
@@ -182,12 +231,14 @@ if (!jobId) {
 }
 
 refreshJobButton?.addEventListener('click', refreshJob);
+followUpForm?.addEventListener('submit', submitFollowUp);
 
 window.__llmJob = {
   formatDuration,
   renderJob,
   renderQueueSnapshot,
   refreshJob,
+  submitFollowUp,
   loadJob,
   stopPolling
 };
